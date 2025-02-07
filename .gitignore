@@ -1,0 +1,13 @@
+# Virtual environment folder
+ll_env/
+
+# Python bytecode and cache
+*.pyc
+__pycache__/
+
+# SQLite database file
+db.sqlite3
+
+# IDE or editor directories
+.vscode/
+.idea/

@@ -1,0 +1,11 @@
+{% extends 'ear_tune/base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div>
+    <h2>{{ challenge.get_challenge_type_display }}</h2>
+    <p>{{ challenge.prompt }}</p>
+    <!-- Later, we can add the answer form here -->
+</div>
+{% endblock %}
