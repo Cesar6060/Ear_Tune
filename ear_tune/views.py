@@ -3,6 +3,37 @@ from .models import Game, Challenge, GameSession
 from .forms import AnswerForm
 
 # Create your views here.
+def home(request):
+    """Render home page with a challenge."""
+    challenge = Challenge.objects.first()
+    result = None
+        
+    if request.method == 'POST':
+        form = AnswerForm(request.POST)
+        if form.is_valid():
+            answer = form.cleaned_data['answer']
+            
+            #Validate the submitted answer 
+            user_input = answer.strip().lower()
+            correct_value = challenge.correct_answer.strip().lower()
+            print("DEBUG: User input =", repr(user_input))
+            print("DEBUG: Correct answer =", repr(correct_value))
+            
+            if user_input == correct_value:
+                result = "Correct!"
+
+            else:
+                result = "Incorrect. Try again!"
+
+    else:
+        form = AnswerForm()
+        
+    return render(request, 'ear_tune/home.html', {
+        'challenge' : challenge,
+        'form': form,
+        'result': result,
+        })
+
 
 def game_selection(request):
     """Render the game selection screen with a list of available games."""
@@ -44,26 +75,3 @@ def game_history(request):
     return render(request, 'ear_tune/game_history.html', {'sessions': sessions})
 
 
-def home(request):
-    """Render home page with a challenge."""
-    challenge = Challenge.objects.first()
-    result = None
-        
-    if request.method == 'POST':
-        form = AnswerForm(request.POST)
-        if form.is_valid():
-            answer = form.cleaned_data['answer']
-            #Validate the submitted answer 
-            if answer.strip().lower == challenge.correct_answer.strip().lower():
-                result = "Correct!"
-            else:
-                result = "Incorrect. Try again!"
-
-    else:
-        form = AnswerForm()
-        
-    return render(request, 'ear_tune/home.html', {
-        'challenge' : challenge,
-        'form': form,
-        'result': result,
-        })

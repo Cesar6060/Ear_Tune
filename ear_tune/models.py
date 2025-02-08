@@ -20,9 +20,9 @@ class Challenge(models.Model):
         null=True, 
         blank=True
     )
-    
+
     CHALLENGE_TYPE_CHOICES = [
-        ('interval', 'Interval'),
+        ('note', 'Note'),
         ('chord', 'Chord'),
         # Additional challenge types can be added here
 
