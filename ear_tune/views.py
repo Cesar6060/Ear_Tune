@@ -6,6 +6,7 @@ from .forms import AnswerForm
 def home(request):
     """Render home page with a challenge."""
     challenge = Challenge.objects.first()
+    games = Game.objects.first()
     result = None
         
     if request.method == 'POST':
@@ -32,13 +33,8 @@ def home(request):
         'challenge' : challenge,
         'form': form,
         'result': result,
-        })
-
-
-def game_selection(request):
-    """Render the game selection screen with a list of available games."""
-    games = Game.objects.all()
-    return render(request, 'ear_tune/game_selection.html', {'games': games})
+        'games': games,
+    })
 
 def game_detail(request, game_id):
     """Render a game detail page; retrieves the first challenge for the game."""

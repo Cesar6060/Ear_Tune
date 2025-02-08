@@ -7,6 +7,17 @@
 <body>
   <header>
     <h1>EarTune</h1>
+    <nav>
+      {% if user.is_authenticated %}
+        <p>Welcome, {{ user.username }}! 
+        </p>
+      {% else %}
+        <p>
+          <a href="{% url 'accounts:login' %}">Log In</a> | 
+          
+        </p>
+      {% endif %}
+    </nav>
   </header>
   <main>
     {% block content %}

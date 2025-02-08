@@ -18,4 +18,21 @@
         <p>{{ result }}</p>
     {% endif %}
 </div>
+
+<hr>
+
+<!-- Game Selection Section -->
+<div class="game-selection">
+    <h3>Available Games</h3>
+    {% if games %}
+        <ul>
+            {% for game in games %}
+                <li><a href="{% url 'ear_tune:game_detail' game.id %}">{{ game.name }}</a></li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No games available.</p>
+    {% endif %}
+</div>
+
 {% endblock %}
