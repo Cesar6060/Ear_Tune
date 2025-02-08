@@ -13,7 +13,14 @@ class Game(models.Model):
 
 class Challenge(models.Model):
     """ An ear-training challenge for users to complete where each challenge is linked to a specific game."""
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='challenge')
+    game = models.ForeignKey(
+        Game, 
+        on_delete=models.CASCADE, 
+        related_name='challenges', 
+        null=True, 
+        blank=True
+    )
+    
     CHALLENGE_TYPE_CHOICES = [
         ('interval', 'Interval'),
         ('chord', 'Chord'),
@@ -33,7 +40,8 @@ class GameSession(models.Model):
     """A record of a user's game session, tracking performance"""
     date_played = models.DateTimeField(auto_now_add=True)
     score = models.ForeignKey(Challenge, on_delete=models.CASCADE)
-    Challenge - models.ForeignKey(Challenge, on_delete=models.CASCADE)
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='game_sessions')
+
 
     def __str__(self):
         """Return a string representation of the game session."""

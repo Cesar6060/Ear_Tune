@@ -38,6 +38,11 @@ def game_detail(request, game_id):
         'result': result,
     })
 
+def game_history(request):
+    """Render a page displaying a list of all game sessions."""
+    sessions = GameSession.objects.all().order_by('-date_played')
+    return render(request, 'ear_tune/game_history.html', {'sessions': sessions})
+
 
 def home(request):
     """Render home page with a challenge."""
