@@ -11,3 +11,5 @@ db.sqlite3
 # IDE or editor directories
 .vscode/
 .idea/
+
+CommitInstructions/

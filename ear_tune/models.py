@@ -1,8 +1,19 @@
 from django.db import models
 
 # Create your models here.
+class Game(models.Model):
+    """A type of game available to play."""
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        """Return the name of the game"""
+        return self.name
+
+
 class Challenge(models.Model):
-    """ An ear-training challenge for users to complete."""
+    """ An ear-training challenge for users to complete where each challenge is linked to a specific game."""
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='challenge')
     CHALLENGE_TYPE_CHOICES = [
         ('interval', 'Interval'),
         ('chord', 'Chord'),
@@ -10,7 +21,7 @@ class Challenge(models.Model):
 
     ]
     challenge_type = models.CharField(max_length=20, choices=CHALLENGE_TYPE_CHOICES)
-    prompt = models.CharField(max_length=200) # A brief description or instructions for the challenge
+    prompt = models.CharField(max_length=200) 
     correct_answer = models.CharField(max_length=50)
 
     def __str__(self):
@@ -22,6 +33,7 @@ class GameSession(models.Model):
     """A record of a user's game session, tracking performance"""
     date_played = models.DateTimeField(auto_now_add=True)
     score = models.ForeignKey(Challenge, on_delete=models.CASCADE)
+    Challenge - models.ForeignKey(Challenge, on_delete=models.CASCADE)
 
     def __str__(self):
         """Return a string representation of the game session."""

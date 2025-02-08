@@ -7,5 +7,15 @@
     <h2>{{ challenge.get_challenge_type_display }}</h2>
     <p>{{ challenge.prompt }}</p>
     <!-- Later, we can add the answer form here -->
+     
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p}}
+        <button type="submit">Submit Answer</button>
+    </form>
+
+    {% if result %}
+        <p>{{ result }}</p>
+    {% endif %}
 </div>
 {% endblock %}

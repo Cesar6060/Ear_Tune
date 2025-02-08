@@ -1,0 +1,14 @@
+{% extends 'ear_tune/base.html' %}
+
+{% block title %}Select a Game{% endblock %}
+
+{% block content %}
+    <h2>Select a Game</h2>
+    <ul>
+        {% for game in games %}
+          <li>
+            <a href="{% url 'ear_tune:game_detail' game.id %}">{{ game.name }} </a>
+          </li>
+        {% endfor %}
+    </ul>
+{% endblock %}
