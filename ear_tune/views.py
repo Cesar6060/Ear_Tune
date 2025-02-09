@@ -1,8 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
 from .models import Game, Challenge, GameSession
 from .forms import AnswerForm
 
 # Create your views here.
+@login_required
 def home(request):
     """Render home page with a challenge."""
     challenge = Challenge.objects.first()
@@ -36,6 +38,17 @@ def home(request):
         'games': games,
     })
 
+
+@login_required
+def game_selection(request):
+    """
+    Render the game selection screen with a list of available games.
+    """
+    games = Game.objects.all()
+    return render(request, 'ear_tune/game_selection.html', {'games': games})
+
+
+@login_required
 def game_detail(request, game_id):
     """Render a game detail page; retrieves the first challenge for the game."""
     game = get_object_or_404(Game, id=game_id)
@@ -65,6 +78,8 @@ def game_detail(request, game_id):
         'result': result,
     })
 
+
+@login_required
 def game_history(request):
     """Render a page displaying a list of all game sessions."""
     sessions = GameSession.objects.all().order_by('-date_played')

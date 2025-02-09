@@ -1,31 +1,37 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>{% block title %}EarTune{% endblock %}</title>
-</head>
-<body>
-  <header>
-    <h1>EarTune</h1>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>EarTune</title>
+  </head>
+  <body>
     <nav>
+      <a href="{% url 'ear_tune:home' %}">EarTune</a>
+      
+      <!-- Left side: additional navigation links could go here -->
+      
+      <!-- Account-related links -->
       {% if user.is_authenticated %}
-        <p>Welcome, {{ user.username }}! 
-        </p>
+        <span>Hello, {{ user.username }}!</span>
       {% else %}
-        <p>
-          <a href="{% url 'accounts:login' %}">Log In</a> | 
-          
-        </p>
+        <a href="{% url 'accounts:register' %}">Register</a>
+        <a href="{% url 'accounts:login' %}">Log in</a>
+      {% endif %}
+      
+      <!-- Logout form: Only show if user is authenticated -->
+      {% if user.is_authenticated %}
+        <form action="{% url 'accounts:logout' %}" method="post" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit">Log out</button>
+        </form>
       {% endif %}
     </nav>
-  </header>
-  <main>
-    {% block content %}
-    <!-- Child templates will insert content here -->
-    {% endblock %}
-  </main>
-  <footer>
-    <p>&copy; 2025 EarTune</p>
-  </footer>
-</body>
+
+    <main>
+      {% block content %}
+      {% endblock %}
+    </main>
+  </body>
 </html>
+
+

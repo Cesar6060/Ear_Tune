@@ -1,13 +1,13 @@
 {% extends 'ear_tune/base.html' %}
 
-{% block title %}Log In{% endblock %}
+{% block page_header %}
+    <h2>Log In</h2>
+{% endblock page_header %}
 
 {% block content %}
-  <h2>Log In</h2>
-  <form methond="post">
+  <form action="{% url 'accounts:login' %}" method="post">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit">Log In</button>
   </form>
-  <p>Don't have an account? <a href="{% url 'accounts:signup' %}">Sign Up</a></p>
-{% endblock %}
+{% endblock content %}
