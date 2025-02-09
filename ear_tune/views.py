@@ -67,7 +67,7 @@ def game_detail(request, game_id):
                 result = "Incorrect. Try again!"
                 score = 0
             # Recored the game session with the attempt's score
-            GameSession.objects.creat(challenge=challenge, score=score)
+            GameSession.objects.creat(challenge=challenge, score=score, user=request.user)
     else:
         form = AnswerForm()
 
@@ -82,7 +82,7 @@ def game_detail(request, game_id):
 @login_required
 def game_history(request):
     """Render a page displaying a list of all game sessions."""
-    sessions = GameSession.objects.all().order_by('-date_played')
+    sessions = GameSession.objects.filter(user=request.user).order_by('-date_played')
     return render(request, 'ear_tune/game_history.html', {'sessions': sessions})
 
 

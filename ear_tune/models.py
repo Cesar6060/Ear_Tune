@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
 class Game(models.Model):
@@ -41,6 +42,8 @@ class GameSession(models.Model):
     date_played = models.DateTimeField(auto_now_add=True)
     score = models.ForeignKey(Challenge, on_delete=models.CASCADE)
     challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='game_sessions')
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE,related_name='game_sessions')
 
 
     def __str__(self):
