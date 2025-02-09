@@ -33,6 +33,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     # My Apps.
     'ear_tune',
+    'accounts',
 
     'django.contrib.admin',
     'django.contrib.auth',
