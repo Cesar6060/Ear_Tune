@@ -1,5 +1,6 @@
-from django.shortcuts import render, redirect, get_object_or_404
+import random
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
 from .models import Game, Challenge, GameSession
 from .forms import AnswerForm
 
@@ -8,6 +9,8 @@ from .forms import AnswerForm
 def home(request):
     """Render home page with a challenge."""
     challenge = Challenge.objects.first()
+    
+    
     games = Game.objects.first()
     result = None
         
@@ -15,18 +18,26 @@ def home(request):
         form = AnswerForm(request.POST)
         if form.is_valid():
             answer = form.cleaned_data['answer']
-            
-            #Validate the submitted answer 
             user_input = answer.strip().lower()
             correct_value = challenge.correct_answer.strip().lower()
+            
             print("DEBUG: User input =", repr(user_input))
             print("DEBUG: Correct answer =", repr(correct_value))
             
-            if user_input == correct_value:
-                result = "Correct!"
+            if "_" in correct_value:
+                # Split the stored value into acceptable variants.
+                acceptable = [val.strip().lower() for val in correct_value.split("_")]
+                if user_input in acceptable:
+                    result = "Correct!"
+                else:
+                    result = "Incorrect. Try again!"
+            
+            else: 
+                if user_input == correct_value:
+                    result = "Correct!"
 
-            else:
-                result = "Incorrect. Try again!"
+                else:
+                    result = "Incorrect. Try again!"
 
     else:
         form = AnswerForm()
@@ -59,13 +70,28 @@ def game_detail(request, game_id):
         form = AnswerForm(request.POST)
         if form.is_valid():
             answer = form.cleaned_data['answer']
-            # Validate answer (case-insensitive and trimmed)
-            if answer.strip().lower() == challenge.correct_answer.strip().lower():
-                result = "Correct!"
-                score = 1
-            else:
-                result = "Incorrect. Try again!"
-                score = 0
+            user_input = answer.strip().lower()
+            correct_value = challenge.correct_answer.strip().lower()
+            
+            if "_" in correct_value:
+                # Split the stored value into acceptable variants.
+                acceptable = [val.strip().lower() for val in correct_value.split("_")]
+                if user_input in acceptable:
+                    result = "Correct!"
+                    score = 1
+                else:
+                    result = "Incorrect. Try again!"
+                    score = 0
+            
+            else: 
+                if user_input == correct_value:
+                    result = "Correct!"
+                    score = 1
+
+                else:
+                    result = "Incorrect. Try again!"
+                    score = 0
+
             # Recored the game session with the attempt's score
             GameSession.objects.creat(challenge=challenge, score=score, user=request.user)
     else:

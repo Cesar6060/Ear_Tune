@@ -1,4 +1,5 @@
 {% extends 'ear_tune/base.html' %}
+{% load static %}
 
 {% block title %}Home{% endblock %}
 
@@ -7,7 +8,19 @@
     <h2>{{ challenge.get_challenge_type_display }}</h2>
     <p>{{ challenge.prompt }}</p>
     <!-- Later, we can add the answer form here -->
-     
+    
+    {# If the challenge type is "note", display an audio player #}
+    {% if challenge.challenge_type == "note" %}
+      <audio controls>
+        {% if "_" in challenge.correct_answer %}
+          <source src="{% static 'audio/notes/' %}{{ challenge.correct_answer }}_3.wav" type="audio/wav">
+        {% else %}
+          <source src="{% static 'audio/notes/' %}{{ challenge.correct_answer }}3.wav" type="audio/wav">
+        {% endif %}
+        Your browser does not support the audio element.
+      </audio>
+    {% endif %}
+
     <form method="post">
         {% csrf_token %}
         {{ form.as_p}}
@@ -18,9 +31,7 @@
         <p>{{ result }}</p>
     {% endif %}
 </div>
-
 <hr>
-
 <!-- Game Selection Section -->
 <div class="game-selection">
     <h3>Available Games</h3>

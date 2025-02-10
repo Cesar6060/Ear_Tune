@@ -7,7 +7,16 @@
   <h2>{{ challenge.get_challenge_type_display }}</h2>
   <p>{{ challenge.prompt }}</p>
 
-<!-- Amswer Form-->
+  {% if challenge.challenge_type == "note" %}
+    <audio controls>
+        <source src="{% static 'audio/notes/' %}{{ challenge.correct_answer}}_3/wav" type="audio/wav">
+    {% else %}
+        <source src="{% static 'audio/notes/' %}{{ challenge.correct_answer }}3.wav" type="audio/wav">
+    {% endif %}
+    Your browser does not support the audio element.
+    </audio>
+  {% endif %}
+
   <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
