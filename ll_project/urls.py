@@ -20,5 +20,6 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
-    path('', include('ear_tune.urls')) # Routes the root URL to your ear_tune app
+    path('api/v1/', include('api.urls')),
+    path('', include('ear_tune.urls')), 
 ]
