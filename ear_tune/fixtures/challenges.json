@@ -1,0 +1,123 @@
+[
+    {
+      "model": "ear_tune.challenge",
+      "pk": 1,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "A"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 2,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "A#_Bb"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 3,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "B"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 4,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "C"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 5,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "C#_Db"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 6,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "D"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 7,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "D#_Eb"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 8,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "E"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 9,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "F"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 10,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "F#_Gb"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 11,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "G"
+      }
+    },
+    {
+      "model": "ear_tune.challenge",
+      "pk": 12,
+      "fields": {
+        "game": 1,
+        "challenge_type": "note",
+        "prompt": "Identify this note.",
+        "correct_answer": "G#_Ab"
+      }
+    }
+  ]
+  
