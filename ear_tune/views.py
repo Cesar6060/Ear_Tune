@@ -8,10 +8,11 @@ from .forms import AnswerForm
 @login_required
 def home(request):
     """Render home page with a challenge."""
-    challenge = Challenge.objects.first()
     
-    
-    games = Game.objects.first()
+    note_challenge = list(Challenge.objects.filter(challenge_type='note'))
+    challenge = random.choice(note_challenge) if note_challenge else None
+
+    games = Game.objects.all()
     result = None
         
     if request.method == 'POST':
