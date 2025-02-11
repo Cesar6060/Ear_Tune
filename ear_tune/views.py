@@ -1,8 +1,11 @@
 import random
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Game, Challenge, GameSession
 from .forms import AnswerForm
+
+
 
 # Create your views here.
 @login_required
@@ -38,9 +41,15 @@ def game_detail(request, game_id):
     challenge = random.choice(challenges) if challenges else None
     result = None
     audio_file = None
+    # After selecting the challenge
 
     if challenge and challenge.challenge_type == "note":
         audio_file = f"{challenge.correct_answer.lower()}3.wav"
+
+    active_session = GameSession.objects.filter(user=request.user, challenge__game=game, active=True).first()
+
+    if not active_session:
+        active_session = GameSession.objects.create(challenge=challenge, score=0, user=request.user, active=True)
 
     if request.method == 'POST' and challenge is not None:
         form = AnswerForm(request.POST)
@@ -54,13 +63,17 @@ def game_detail(request, game_id):
             print("DEBUG: Correct answer =", repr(correct_value))
 
             if user_input == correct_value:
-                result = "Correct!"
-                score = 1
+                active_session.score += 1
+                active_session.save()
+                messages.success(request, f"Correct! Your current score is {active_session.score}.")
+        
             else:
-                result = "Incorrect. Try again!"
-                score = 0
+                active_session.active = False
+                active_session.save()
+                messages.error(request, f"Incorrect. Your final score was {active_session.score}.")
 
-            GameSession.objects.create(challenge=challenge, score=score, user=request.user)
+            return redirect('ear_tune:game_detail', game_id=game.id)
+
     else:
         form = AnswerForm()
 
@@ -70,6 +83,7 @@ def game_detail(request, game_id):
         'form': form,
         'result': result,
         'audio_file': audio_file,
+        'active_session': active_session,
     })
 
 

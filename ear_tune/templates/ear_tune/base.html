@@ -20,6 +20,16 @@
         <a href="{% url 'accounts:login' %}">Log in</a>
       {% endif %}
     </nav>
+
+    {# Display Django messages (e.g., success or error messages) #}
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    
     <main>
       {% block content %}{% endblock %}
     </main>

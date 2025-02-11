@@ -8,15 +8,16 @@
   <h2>{{ challenge.get_challenge_type_display }}</h2>
   <p>{{ challenge.prompt }}</p>
 
-  {# Render an audio player if the challenge is a note challenge and an audio file is provided #}
   {% if challenge.challenge_type == "note" and audio_file %}
+  <p><em>Please enter your answer using lowercase letters. For sharps, use "asharp" (e.g., "asharp" for A#) and for naturals simply the note (e.g., "c" for C).</em></p>
     <audio controls>
       <source src="{% static 'audio/notes/' %}{{ audio_file }}" type="audio/wav">
       Your browser does not support the audio element.
     </audio>
-  {% else %}
-    {# Optionally, display a debug message if no audio file is set #}
-    <!-- Audio file not set: {{ audio_file }} -->
+  {% endif %}
+
+  {% if active_session %}
+    <p>Current Score: {{ active_session.score}}</p>
   {% endif %}
 
   <form method="post">
