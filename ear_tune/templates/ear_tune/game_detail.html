@@ -1,4 +1,5 @@
 {% extends 'ear_tune/base.html' %}
+{% load static %}
 
 {% block title %}{{ game.name }} - Challenge{% endblock %}
 
@@ -7,14 +8,15 @@
   <h2>{{ challenge.get_challenge_type_display }}</h2>
   <p>{{ challenge.prompt }}</p>
 
-  {% if challenge.challenge_type == "note" %}
+  {# Render an audio player if the challenge is a note challenge and an audio file is provided #}
+  {% if challenge.challenge_type == "note" and audio_file %}
     <audio controls>
-        <source src="{% static 'audio/notes/' %}{{ challenge.correct_answer}}_3/wav" type="audio/wav">
-    {% else %}
-        <source src="{% static 'audio/notes/' %}{{ challenge.correct_answer }}3.wav" type="audio/wav">
-    {% endif %}
-    Your browser does not support the audio element.
+      <source src="{% static 'audio/notes/' %}{{ audio_file }}" type="audio/wav">
+      Your browser does not support the audio element.
     </audio>
+  {% else %}
+    {# Optionally, display a debug message if no audio file is set #}
+    <!-- Audio file not set: {{ audio_file }} -->
   {% endif %}
 
   <form method="post">
@@ -23,11 +25,8 @@
     <button type="submit">Submit Answer</button>
   </form>
 
- <!-- Display the result message if available -->
   {% if result %}
     <p>{{ result }}</p>
   {% endif %}
-
 </div>
 {% endblock %}
-

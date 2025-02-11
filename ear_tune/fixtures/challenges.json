@@ -6,7 +6,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "A"
+        "correct_answer": "a"
       }
     },
     {
@@ -16,7 +16,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "A#_Bb"
+        "correct_answer": "asharp"
       }
     },
     {
@@ -26,7 +26,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "B"
+        "correct_answer": "b"
       }
     },
     {
@@ -36,7 +36,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "C"
+        "correct_answer": "c"
       }
     },
     {
@@ -46,7 +46,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "C#_Db"
+        "correct_answer": "csharp"
       }
     },
     {
@@ -56,7 +56,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "D"
+        "correct_answer": "d"
       }
     },
     {
@@ -66,7 +66,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "D#_Eb"
+        "correct_answer": "dsharp"
       }
     },
     {
@@ -76,7 +76,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "E"
+        "correct_answer": "e"
       }
     },
     {
@@ -86,7 +86,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "F"
+        "correct_answer": "f"
       }
     },
     {
@@ -96,7 +96,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "F#_Gb"
+        "correct_answer": "fsharp"
       }
     },
     {
@@ -106,7 +106,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "G"
+        "correct_answer": "g"
       }
     },
     {
@@ -116,7 +116,7 @@
         "game": 1,
         "challenge_type": "note",
         "prompt": "Identify this note.",
-        "correct_answer": "G#_Ab"
+        "correct_answer": "gsharp"
       }
     }
   ]

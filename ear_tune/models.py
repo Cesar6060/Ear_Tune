@@ -40,10 +40,11 @@ class Challenge(models.Model):
 class GameSession(models.Model):
     """A record of a user's game session, tracking performance"""
     date_played = models.DateTimeField(auto_now_add=True)
-    score = models.ForeignKey(Challenge, on_delete=models.CASCADE)
+
+    score = models.IntegerField(default=0)
     challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='game_sessions')
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE,related_name='game_sessions')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='game_sessions')
 
 
     def __str__(self):

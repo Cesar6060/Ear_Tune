@@ -1,37 +1,27 @@
+
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <title>EarTune</title>
+    {% load static %}
   </head>
   <body>
     <nav>
       <a href="{% url 'ear_tune:home' %}">EarTune</a>
-      
-      <!-- Left side: additional navigation links could go here -->
-      
-      <!-- Account-related links -->
       {% if user.is_authenticated %}
         <span>Hello, {{ user.username }}!</span>
-      {% else %}
-        <a href="{% url 'accounts:register' %}">Register</a>
-        <a href="{% url 'accounts:login' %}">Log in</a>
-      {% endif %}
-      
-      <!-- Logout form: Only show if user is authenticated -->
-      {% if user.is_authenticated %}
         <form action="{% url 'accounts:logout' %}" method="post" style="display:inline;">
           {% csrf_token %}
           <button type="submit">Log out</button>
         </form>
+      {% else %}
+        <a href="{% url 'accounts:register' %}">Register</a>
+        <a href="{% url 'accounts:login' %}">Log in</a>
       {% endif %}
     </nav>
-
     <main>
-      {% block content %}
-      {% endblock %}
+      {% block content %}{% endblock %}
     </main>
   </body>
 </html>
-
-

@@ -7,49 +7,19 @@ from .forms import AnswerForm
 # Create your views here.
 @login_required
 def home(request):
-    """Render home page with a challenge."""
-    
-    note_challenge = list(Challenge.objects.filter(challenge_type='note'))
-    challenge = random.choice(note_challenge) if note_challenge else None
-
+    """ Render the homepage with a welcome message and a list of available games."""
+    # Retrieve all available games.
     games = Game.objects.all()
-    result = None
-        
-    if request.method == 'POST':
-        form = AnswerForm(request.POST)
-        if form.is_valid():
-            answer = form.cleaned_data['answer']
-            user_input = answer.strip().lower()
-            correct_value = challenge.correct_answer.strip().lower()
-            
-            print("DEBUG: User input =", repr(user_input))
-            print("DEBUG: Correct answer =", repr(correct_value))
-            
-            if "_" in correct_value:
-                # Split the stored value into acceptable variants.
-                acceptable = [val.strip().lower() for val in correct_value.split("_")]
-                if user_input in acceptable:
-                    result = "Correct!"
-                else:
-                    result = "Incorrect. Try again!"
-            
-            else: 
-                if user_input == correct_value:
-                    result = "Correct!"
 
-                else:
-                    result = "Incorrect. Try again!"
+    # Define a welcome message.
+    welcome_message = "Welcome to EarTune! Please select a game to begin."
 
-    else:
-        form = AnswerForm()
-        
+    # Render the home template with the games list and welcome message.
     return render(request, 'ear_tune/home.html', {
-        'challenge' : challenge,
-        'form': form,
-        'result': result,
         'games': games,
+        'welcome_message': welcome_message,
     })
-
+    
 
 @login_required
 def game_selection(request):
@@ -64,37 +34,33 @@ def game_selection(request):
 def game_detail(request, game_id):
     """Render a game detail page; retrieves the first challenge for the game."""
     game = get_object_or_404(Game, id=game_id)
-    challenge = game.challenges.first()
+    challenges = list(game.challenges.all())
+    challenge = random.choice(challenges) if challenges else None
     result = None
+    audio_file = None
 
-    if request.method == 'POST':
+    if challenge and challenge.challenge_type == "note":
+        audio_file = f"{challenge.correct_answer.lower()}3.wav"
+
+    if request.method == 'POST' and challenge is not None:
         form = AnswerForm(request.POST)
         if form.is_valid():
             answer = form.cleaned_data['answer']
             user_input = answer.strip().lower()
             correct_value = challenge.correct_answer.strip().lower()
-            
-            if "_" in correct_value:
-                # Split the stored value into acceptable variants.
-                acceptable = [val.strip().lower() for val in correct_value.split("_")]
-                if user_input in acceptable:
-                    result = "Correct!"
-                    score = 1
-                else:
-                    result = "Incorrect. Try again!"
-                    score = 0
-            
-            else: 
-                if user_input == correct_value:
-                    result = "Correct!"
-                    score = 1
 
-                else:
-                    result = "Incorrect. Try again!"
-                    score = 0
+            # Debug output to check the normalized values.
+            print("DEBUG: User input =", repr(user_input))
+            print("DEBUG: Correct answer =", repr(correct_value))
 
-            # Recored the game session with the attempt's score
-            GameSession.objects.creat(challenge=challenge, score=score, user=request.user)
+            if user_input == correct_value:
+                result = "Correct!"
+                score = 1
+            else:
+                result = "Incorrect. Try again!"
+                score = 0
+
+            GameSession.objects.create(challenge=challenge, score=score, user=request.user)
     else:
         form = AnswerForm()
 
@@ -103,6 +69,7 @@ def game_detail(request, game_id):
         'challenge': challenge,
         'form': form,
         'result': result,
+        'audio_file': audio_file,
     })
 
 

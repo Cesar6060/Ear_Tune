@@ -5,45 +5,19 @@
 
 {% block content %}
 <div>
-    <h2>{{ challenge.get_challenge_type_display }}</h2>
-    <p>{{ challenge.prompt }}</p>
-    <!-- Later, we can add the answer form here -->
+    <h2>{{ welcome_message }}</h2>
+    <p>Please choose one of the available games below:</p>
     
-    {# If the challenge type is "note", display an audio player #}
-    {% if challenge.challenge_type == "note" %}
-      <audio controls>
-        {% if "_" in challenge.correct_answer %}
-          <source src="{% static 'audio/notes/' %}{{ challenge.correct_answer }}_3.wav" type="audio/wav">
-        {% else %}
-          <source src="{% static 'audio/notes/' %}{{ challenge.correct_answer }}3.wav" type="audio/wav">
-        {% endif %}
-        Your browser does not support the audio element.
-      </audio>
-    {% endif %}
-
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p}}
-        <button type="submit">Submit Answer</button>
-    </form>
-
-    {% if result %}
-        <p>{{ result }}</p>
-    {% endif %}
-</div>
-<hr>
-<!-- Game Selection Section -->
-<div class="game-selection">
-    <h3>Available Games</h3>
     {% if games %}
         <ul>
             {% for game in games %}
-                <li><a href="{% url 'ear_tune:game_detail' game.id %}">{{ game.name }}</a></li>
+                <li>
+                    <a href="{% url 'ear_tune:game_detail' game.id %}">{{ game.name }}</a>
+                </li>
             {% endfor %}
         </ul>
     {% else %}
-        <p>No games available.</p>
+        <p>No games available at the moment.</p>
     {% endif %}
 </div>
-
 {% endblock %}
