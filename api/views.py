@@ -1,6 +1,6 @@
 """API views for the EarTune application. This file defines endpoints to list games, retrieve challenges, record game sessions, and submit answers."""
 import random
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from ear_tune.models import Game, Challenge, GameSession
 from .serializers import GameSerializer, ChallengeSerializer, GameSessionSerializer
@@ -10,6 +10,7 @@ class GameList(generics.ListAPIView):
     """ GET endpoint that returns a list of all games. """
     queryset = Game.objects.all()
     serializer_class = GameSerializer
+    permission_classes = [permissions.AllowAny]
 
 # GET
 class ChallengeList(generics.ListAPIView):
@@ -21,6 +22,7 @@ class ChallengeList(generics.ListAPIView):
 class RandomChallenge(generics.GenericAPIView):
     """ GET endpoint that returns a random challenge of type 'note'."""
     serializer_class = ChallengeSerializer
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
         challenges = list(Challenge.objects.filter(challenge_type='note'))
@@ -47,6 +49,7 @@ class SubmitAnswer(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         challenge_id = request.data.get('challenge_id')
         answer = request.data.get('answer')
+
 
         if not challenge_id or not answer:
             return Response({'detail': 'challenge_id and answer are required.'}, status=status.HTTP_400_BAD_REQUEST)
