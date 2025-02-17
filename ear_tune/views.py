@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Game, Challenge, GameSession
 from .forms import AnswerForm
+from .utils import validate_answer
 
 
 
@@ -11,13 +12,8 @@ from .forms import AnswerForm
 @login_required
 def home(request):
     """ Render the homepage with a welcome message and a list of available games."""
-    # Retrieve all available games.
     games = Game.objects.all()
-
-    # Define a welcome message.
     welcome_message = "Welcome to EarTune! Please select a game to begin."
-
-    # Render the home template with the games list and welcome message.
     return render(request, 'ear_tune/home.html', {
         'games': games,
         'welcome_message': welcome_message,
@@ -41,13 +37,11 @@ def game_detail(request, game_id):
     challenge = random.choice(challenges) if challenges else None
     result = None
     audio_file = None
-    # After selecting the challenge
 
     if challenge and challenge.challenge_type == "note":
         audio_file = f"{challenge.correct_answer.lower()}3.wav"
 
     active_session = GameSession.objects.filter(user=request.user, challenge__game=game, active=True).first()
-
     if not active_session:
         active_session = GameSession.objects.create(challenge=challenge, score=0, user=request.user, active=True)
 
@@ -62,7 +56,9 @@ def game_detail(request, game_id):
             print("DEBUG: User input =", repr(user_input))
             print("DEBUG: Correct answer =", repr(correct_value))
 
-            if user_input == correct_value:
+            result_message, score = validate_answer(user_input, correct_value)
+            
+            if score == 1:
                 active_session.score += 1
                 active_session.save()
                 messages.success(request, f"Correct! Your current score is {active_session.score}.")
