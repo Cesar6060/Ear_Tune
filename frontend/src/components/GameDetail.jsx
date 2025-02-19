@@ -1,25 +1,21 @@
 // src/components/GameDetail.jsx
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
- 
 import { useParams } from 'react-router-dom';
 
 function GameDetail() {
-  const { gameId } = useParams(); // Extract the gameId from the URL.
-  const [challenge, setChallenge] = useState(null); // State to store the challenge data.
-  const [audioFile, setAudioFile] = useState(''); // State to store the computed audio file name.
-  const [answer, setAnswer] = useState(''); // State for the user's answer input.
-  const [feedback, setFeedback] = useState(''); // State to store feedback from the backend.
-  const [loading, setLoading] = useState(true); // Loading state to indicate data is being fetched.
+  const { gameId } = useParams(); 
+  const [challenge, setChallenge] = useState(null); 
+  const [audioFile, setAudioFile] = useState(''); 
+  const [answer, setAnswer] = useState(''); 
+  const [feedback, setFeedback] = useState(''); 
+  const [loading, setLoading] = useState(true); 
 
   // useEffect hook to fetch challenge data when the component mounts or when gameId changes.
   useEffect(() => {
     axios.get(`http://localhost:8000/api/v1/challenges/random/?game_id=${gameId}`)
       .then(response => {
-        setChallenge(response.data); // Save the fetched challenge.
-        // Compute the audio file name:
-        // Assuming the canonical correct_answer is in lowercase (e.g., "c" or "asharp"),
-        // we append "3.wav" to get the file name (e.g., "c3.wav").
+        setChallenge(response.data); 
         setAudioFile(response.data.correct_answer.toLowerCase() + "3.wav");
         setLoading(false);
       })
@@ -27,22 +23,27 @@ function GameDetail() {
         console.error("Error fetching challenge:", error);
         setLoading(false);
       });
-  }, [gameId]); // Dependency array ensures this effect runs whenever gameId changes.
+  }, [gameId]); 
 
-  // Handle the answer submission.
-  const handleSubmit = (e) => {
-    e.preventDefault(); // Prevent the form from reloading the page.
-    axios.post(`http://localhost:8000/game/${gameId}/`, { answer })
-      .then(response => {
-        // Set feedback from the response, or default to a generic message.
-        setFeedback(response.data.result || "No feedback provided");
-        setAnswer('');  // Clear the input box after submission.
-        // Optionally, refresh the challenge or update the score here.
-      })
-      .catch(error => {
-        console.error("Error submitting answer:", error);
-      });
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Prevent default form submission
+    try {
+      // Send the answer to the backend
+      const postResponse = await axios.post(`http://localhost:8000/game/${gameId}/`, { answer });
+      console.log("POST response:", postResponse.data);  // Log the backend feedback
+      setFeedback(postResponse.data.result || "No feedback provided");
+      setAnswer(''); // Clear the input box
+      
+      // Re-fetch a new challenge to update the note
+      const getResponse = await axios.get(`http://localhost:8000/api/v1/challenges/random/?game_id=${gameId}`);
+      console.log("Fetched new challenge:", getResponse.data);  // Log the new challenge
+      setChallenge(getResponse.data);
+      setAudioFile(getResponse.data.correct_answer.toLowerCase() + "3.wav");
+    } catch (error) {
+      console.error("Error submitting answer:", error);
+    }
   };
+  
 
   // If the challenge data is still loading, display a loading message.
   if (loading) return <div>Loading challenge...</div>;
