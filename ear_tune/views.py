@@ -2,6 +2,7 @@ import random
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
 from .models import Game, Challenge, GameSession
 from .forms import AnswerForm
 from .utils import validate_answer
@@ -30,6 +31,7 @@ def game_selection(request):
 
 
 @login_required
+@csrf_exempt
 def game_detail(request, game_id):
     """Render a game detail page; retrieves the first challenge for the game."""
     game = get_object_or_404(Game, id=game_id)

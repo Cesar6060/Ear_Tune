@@ -64,7 +64,7 @@ class UtilsTests(TestCase):
     def test_validate_answer_correct(self):
         result, score = validate_answer("c", "c")
         self.assertEqual(result, "Correct!")
-        self.asserEqual(score, 1)
+        self.assertEqual(score, 1)
     
     def test_validate_answer_incorrect(self):
         result, score =validate_answer("d", "c")
