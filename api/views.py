@@ -25,7 +25,11 @@ class RandomChallenge(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
-        challenges = list(Challenge.objects.filter(challenge_type='note'))
+        game_id = request.query_params.get('game_id')
+        if game_id:
+            challenges = list(Challenge.objects.filter(challenge_type='note', game__id=game_id))
+        else:
+            challenges = list(Challenge.objects.filter(challenge_type='note'))
         if not challenges:
             return Response({'detail': 'No Challenges Available.'}, status=status.HTTP_404_NOT_FOUND)
         challenge = random.choice(challenges)

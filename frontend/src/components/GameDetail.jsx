@@ -1,21 +1,21 @@
-// src/components/GameDetail.jsx
 import React, { useEffect, useState } from 'react';
 import axios from '../axiosConfig';
 import { useParams } from 'react-router-dom';
 
 function GameDetail() {
-  const { gameId } = useParams(); 
-  const [challenge, setChallenge] = useState(null); 
-  const [audioFile, setAudioFile] = useState(''); 
-  const [answer, setAnswer] = useState(''); 
-  const [feedback, setFeedback] = useState(''); 
-  const [loading, setLoading] = useState(true); 
+  const { gameId } = useParams(); // Extracts the gameId from the URL.
+  const [challenge, setChallenge] = useState(null); // Holds the current challenge data.
+  const [audioFile, setAudioFile] = useState(''); // Computed audio file name.
+  const [answer, setAnswer] = useState(''); // User's answer input.
+  const [feedback, setFeedback] = useState(''); // Feedback message from the backend.
+  const [loading, setLoading] = useState(true); // Loading state.
 
-  // useEffect hook to fetch challenge data when the component mounts or when gameId changes.
+  // Fetch a random challenge for the game when the component mounts or gameId changes.
   useEffect(() => {
     axios.get(`http://localhost:8000/api/v1/challenges/random/?game_id=${gameId}`)
       .then(response => {
-        setChallenge(response.data); 
+        setChallenge(response.data);
+        // Compute the audio file name from the canonical answer.
         setAudioFile(response.data.correct_answer.toLowerCase() + "3.wav");
         setLoading(false);
       })
@@ -23,45 +23,47 @@ function GameDetail() {
         console.error("Error fetching challenge:", error);
         setLoading(false);
       });
-  }, [gameId]); 
+  }, [gameId]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent default form submission
+    e.preventDefault(); // Prevent page reload on form submission.
     try {
-      // Send the answer to the backend
-      const postResponse = await axios.post(`http://localhost:8000/game/${gameId}/`, { answer });
-      console.log("POST response:", postResponse.data);  // Log the backend feedback
+      // Send the answer to the backend.
+      const postResponse = await axios.post(`http://localhost:8000/api/v1/submit-answer/`, {
+        challenge_id: challenge.id,
+        answer: answer
+      });
+      console.log("POST response:", postResponse.data);
       setFeedback(postResponse.data.result || "No feedback provided");
-      setAnswer(''); // Clear the input box
+      setAnswer(''); // Clear the input box.
       
-      // Re-fetch a new challenge to update the note
+      // Re-fetch a new random challenge.
       const getResponse = await axios.get(`http://localhost:8000/api/v1/challenges/random/?game_id=${gameId}`);
-      console.log("Fetched new challenge:", getResponse.data);  // Log the new challenge
+      console.log("New challenge fetched:", getResponse.data);
       setChallenge(getResponse.data);
-      setAudioFile(getResponse.data.correct_answer.toLowerCase() + "3.wav");
+      const newAudio = getResponse.data.correct_answer.toLowerCase() + "3.wav";
+      console.log("Computed audio file:", newAudio);
+      setAudioFile(newAudio);
     } catch (error) {
       console.error("Error submitting answer:", error);
     }
   };
   
 
-  // If the challenge data is still loading, display a loading message.
   if (loading) return <div>Loading challenge...</div>;
 
   return (
     <div>
       {challenge ? (
         <>
-          {/* Display the challenge prompt */}
           <h2>{challenge.prompt}</h2>
-          {/* If the challenge is a note and an audio file is computed, display an audio player */}
           {challenge.challenge_type === "note" && audioFile && (
-            <audio controls>
+            // Updated: Added key attribute to force re-render of the audio element.
+            <audio key={audioFile} controls>
               <source src={`http://localhost:8000/static/audio/notes/${audioFile}`} type="audio/wav" />
               Your browser does not support the audio element.
             </audio>
           )}
-          {/* Form for submitting the answer */}
           <form onSubmit={handleSubmit}>
             <input
               type="text"
@@ -71,7 +73,6 @@ function GameDetail() {
             />
             <button type="submit">Submit Answer</button>
           </form>
-          {/* Display feedback from the backend */}
           {feedback && <p>{feedback}</p>}
         </>
       ) : (
@@ -80,5 +81,6 @@ function GameDetail() {
     </div>
   );
 }
+
 
 export default GameDetail;
