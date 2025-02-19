@@ -1,7 +1,7 @@
 // src/components/GameDetail.jsx
-
 import React, { useEffect, useState } from 'react';
-import axios from 'axios'; 
+import axios from '../axiosConfig';
+ 
 import { useParams } from 'react-router-dom';
 
 function GameDetail() {
