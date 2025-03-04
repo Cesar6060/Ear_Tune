@@ -45,44 +45,60 @@ class GameSessionList(generics.ListAPIView):
         return GameSession.objects.filter(user=self.request.user).order_by('-date_played') # '-' means decending order
 
 # POST
-class SubmitAnswer(generics.GenericAPIView):
-    """ 
-    POST endpoint to submit an answer to a challenge. 
-    Validates the answer, records a game session, and returns result.
-    """
-    def post(self, request, *args, **kwargs):
-        challenge_id = request.data.get('challenge_id')
+class SubmitAnswerView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        session_id = request.data.get('session_id')
         answer = request.data.get('answer')
-
-
-        if not challenge_id or not answer:
-            return Response({'detail': 'challenge_id and answer are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            challenge = Challenge.objects.get(id=challenge_id)
-        except Challenge.DoesNotExist:
-            return Response({'detail': 'Challenge not found.'}, status=status.HTTP_404_NOT_FOUND)
+            session = GameSession.objects.get(id=session_id, user=request.user, is_active=True)
+        except GameSession.DoesNotExist:
+            return Response({"error": "Active game session not found"}, status=status.HTTP_404_NOT_FOUND)
         
-        user_input = answer.strip().lower()
-        correct_value = challenge.correct_answer.strip().lower()
-
-        if "_" in correct_value:
-            acceptable = [val.strip().lower() for val in correct_value.split("_")]
-            if user_input in acceptable:
-                result = "Correct!"
-                score = 1
-            else:
-                result = "Incorrect. Try again!"
-                score = 0
+        if not session.current_challenge:
+            return Response({"error": "No active challenge"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Normalize the answer if needed (assuming you have a helper function)
+        normalized_answer = normalize_answer(answer)
+        correct_answer = session.current_challenge.correct_answer
+        
+        if normalized_answer == correct_answer:
+            # Correct answer logic
+            session.score += 1
+            session.current_challenge_attempts = 0  # Reset attempts for next challenge
             
+            # Get next challenge
+            next_challenge = Challenge.objects.filter(game=session.game).order_by('?').first()
+            session.current_challenge = next_challenge
+            session.save()
+            
+            return Response({
+                "result": "correct",
+                "score": session.score,
+                "next_challenge": ChallengeSerializer(next_challenge).data
+            })
         else:
-            if user_input == correct_value:
-                result = "Correct!"
-                score = 1
+            # Incorrect answer logic
+            session.current_challenge_attempts += 1
+            
+            if session.current_challenge_attempts >= 3:
+                # End the session after 3 failed attempts
+                session.is_active = False
+                session.save()
+                return Response({
+                    "result": "incorrect",
+                    "game_over": True,
+                    "final_score": session.score,
+                    "correct_answer": correct_answer
+                })
             else:
-                result = "Incorrect. Try again!"
-                score = 0
-        
-        GameSession.objects.create(challenge=challenge, score=score, user=request.user)
-
-        return Response({'result': result}, status=status.HTTP_200_OK)
+                # Still has attempts remaining
+                session.save()
+                return Response({
+                    "result": "incorrect",
+                    "attempts_left": 3 - session.current_challenge_attempts,
+                    "score": session.score
+                })
     

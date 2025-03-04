@@ -1,71 +1,89 @@
-// src/components/Login.jsx
-/**
- * Login.jsx
- * ---------
- * A simple login form that sends a POST request to the token endpoint.
- * On success, it stores the JWT in localStorage and navigates to the home page.
- */
-
+// src/components/Login.jsx - Login component
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from '../axiosConfig';
-import { useNavigate } from 'react-router-dom';
 
-function Login() {
-  const [username, setUsername] = useState('');    // Stores the username entered by the user.
-  const [password, setPassword] = useState('');    // Stores the password.
-  const [error, setError] = useState('');          // Stores any error messages.
-  const navigate = useNavigate();                  // Hook to navigate to a different route on success.
+function Login({ onLoginSuccess }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent the form from reloading the page.
+    e.preventDefault();
+    setLoading(true);
+    setError('');
     
     try {
-      // Send a POST request to the token endpoint with the username and password.
-      const response = await axios.post('http://localhost:8000/api/token/', {
-        username: username,
-        password: password,
+      const response = await axios.post('/api/token/', {
+        username,
+        password
       });
       
-      // On success, store the tokens in localStorage.
+      // Store tokens in localStorage
       localStorage.setItem('access_token', response.data.access);
       localStorage.setItem('refresh_token', response.data.refresh);
       
-      // Optionally, set axios default header to include the access token for future requests.
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-      
-      // Navigate to the home page (or another protected page).
+      // Update authentication state and redirect
+      onLoginSuccess();
       navigate('/');
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("Invalid username or password.");
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(
+        error.response?.data?.detail || 
+        'Login failed. Please check your credentials and try again.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h2>Login</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Username:</label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
+    <div className="auth-container">
+      <div className="auth-form-container">
+        <h1>Login to EarTune</h1>
+        
+        {error && <div className="auth-error">{error}</div>}
+        
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <label htmlFor="username">Username</label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          
+          <button 
+            type="submit" 
+            className="auth-button"
+            disabled={loading}
+          >
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+        
+        <div className="auth-links">
+          <p>
+            Don't have an account? <Link to="/register">Register</Link>
+          </p>
         </div>
-        <div>
-          <label>Password:</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <button type="submit">Log In</button>
-      </form>
+      </div>
     </div>
   );
 }
