@@ -1,7 +1,10 @@
+# ear_tune/models.py - Add attempts field to GameSession model
+
 from django.db import models
 from django.contrib.auth.models import User
 
-# Create your models here.
+# Keep existing Game and Challenge models
+
 class Game(models.Model):
     """A type of game available to play."""
     name = models.CharField(max_length=100)
@@ -26,7 +29,6 @@ class Challenge(models.Model):
         ('note', 'Note'),
         ('chord', 'Chord'),
         # Additional challenge types can be added here
-
     ]
     challenge_type = models.CharField(max_length=20, choices=CHALLENGE_TYPE_CHOICES)
     prompt = models.CharField(max_length=200) 
@@ -39,18 +41,18 @@ class Challenge(models.Model):
 
 class GameSession(models.Model):
     """A record of a user's game session, tracking performance"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    game = models.ForeignKey(Game, on_delete=models.CASCADE)
+    date_played = models.DateTimeField(auto_now_add=True)
     score = models.IntegerField(default=0)
-    current_challenge = models.ForeignKey('Challenge', on_delete=models.SET_NULL, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    # Add this field to track attempts
-    current_challenge_attempts = models.IntegerField(default=0)
-
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='game_sessions')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='game_sessions')
+    active = models.BooleanField(default=True)
+    # New field to track remaining attempts
+    attempts_left = models.IntegerField(default=3)
+    # Track if this is a complete session or just an attempt
+    is_attempt = models.BooleanField(default=False)
+    # Reference to parent session (for tracking attempts)
+    parent_session = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='attempts')
 
     def __str__(self):
         """Return a string representation of the game session."""
         return f"Session on {self.date_played} with score {self.score}"
-
