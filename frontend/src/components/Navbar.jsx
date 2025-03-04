@@ -2,6 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+
 function NavBar({ isAuthenticated, onLogout }) {
   return (
     <nav className="navbar">

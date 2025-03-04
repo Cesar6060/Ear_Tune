@@ -17,8 +17,9 @@
   {% endif %}
 
   {% if active_session %}
-    <p>Current Score: {{ active_session.score}}</p>
-  {% endif %}
+  <p>Current Score: {{ active_session.score }}</p>
+  <p>Attempts Left: {{ active_session.attempts_left }}</p>
+{% endif %}
 
   <form method="post">
     {% csrf_token %}

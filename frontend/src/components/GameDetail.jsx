@@ -52,7 +52,7 @@ function GameDetail() {
   // Start a new game session
   const startNewSession = async () => {
     try {
-      const response = await axios.post('/api/v1/game-sessions/', {
+      const response = await axios.post('/api/v1/game-sessions/create/', {
         game_id: gameId
       });
       setSessionId(response.data.id);

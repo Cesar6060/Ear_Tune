@@ -60,7 +60,7 @@ def game_detail(request, game_id):
 
             result_message, score = validate_answer(user_input, correct_value)
             
-            if score == 1:
+            if score == 1:  # correct answer
                 active_session.score += 1
                 active_session.save()
                 messages.success(request, f"Correct! Your current score is {active_session.score}.")

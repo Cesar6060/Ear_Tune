@@ -3,6 +3,7 @@
 import random
 from django.contrib.auth.models import User
 from rest_framework import generics, status, permissions
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from ear_tune.models import Game, Challenge, GameSession
