@@ -133,10 +133,6 @@ We use feature branches for development and testing:
 3. Push to the remote repository
 4. Create a pull request for code review
 
-## License
-
-[Add license information]
-
 ## Contributors
 
-[Add contributor information]
+[Cesar Villarreal]
