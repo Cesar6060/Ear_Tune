@@ -6,8 +6,8 @@ from rest_framework import generics, status, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from ear_tune.models import Game, Challenge, GameSession
-from .serializers import GameSerializer, ChallengeSerializer, GameSessionSerializer
+from ear_tune.models import Game, Challenge, GameSession, FrequencyBand, EQChallenge
+from .serializers import GameSerializer, ChallengeSerializer, GameSessionSerializer, FrequencyBandSerializer, EQChallengeSerializer
 
 # Keep existing GET views
 class GameList(generics.ListAPIView):  
@@ -232,4 +232,83 @@ class SubmitAnswer(generics.GenericAPIView):
         
         session.save()
         
+        return Response(response_data, status=status.HTTP_200_OK)
+
+class FrequencyBandList(generics.ListAPIView):
+    """List all frequency bands for reference"""
+    queryset = FrequencyBand.objects.all()
+    serializer_class = FrequencyBandSerializer
+    permission_classes = [permissions.AllowAny]
+
+class RandomEQChallenge(generics.GenericAPIView):
+    """Get a random EQ challenge."""
+    serializer_class = EQChallengeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        difficulty = request.query_params.get('difficulty', 'beginner')
+
+        # Get challenges for the frequency game
+        frequency_game = Game.objects.get(name='Frequency Recognition')
+        challenges = EQChallenge.objects.filter(
+            game=frequency_game,
+            difficulty=difficulty
+        )
+
+        if not challenges.exists():
+            return Response(
+                {'detail': f'No challenges available for {difficulty} level.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Select a random challenge
+        challenge = random.choice(challenges)
+        serializer = self.get_serializer(challenge)
+        return Response(serializer.data)
+    
+class SubmitEQAnswer(generics.GenericAPIView):
+    """Submit an answer for an EQ challenge."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        challenge_id = request.data.get('challenge_id')
+        frequency_band_id = request.data.get('frequency_band_id')
+        change_amount = request.data.get('change_amount')
+
+        try:
+            challenge = EQChallenge.objects.get(id=challenge_id)
+        
+        except EQChallenge.DoesNotExist:
+            return Response(
+                {'detail': 'Challenge not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if answer is correct
+        is_correct = (
+            challenge.frequency_band.id == frequency_band_id and
+            challenge.change_amount == change_amount
+        )
+
+        # Create a game session record
+        session = GameSession.objects.create(
+            user=request.user,
+            challenge=None,
+            score= 1 if is_correct else 0,
+            active=False
+        )
+
+        response_data = {
+            'correct': is_correct,
+            'correct_answer': {
+                'frequency_band': challenge.frequency_band.name,
+                'change_amount': challenge.change_amount
+            }
+        }
+        if not is_correct:
+            response_data['user_answer'] = {
+                'frequency_band_id': frequency_band_id,
+                'change_amount': change_amount
+            }
+
         return Response(response_data, status=status.HTTP_200_OK)

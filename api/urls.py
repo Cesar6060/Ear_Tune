@@ -9,7 +9,10 @@ from .views import (
     GameSessionList,
     CreateGameSession, 
     SubmitAnswer,
-    RegisterUser
+    RegisterUser,
+    FrequencyBandList,
+    RandomEQChallenge,
+    SubmitEQAnswer
 )
 
 urlpatterns = [
@@ -21,4 +24,8 @@ urlpatterns = [
     path('game-sessions/create/', CreateGameSession.as_view(), name='create-game-session'),
     path('submit-answer/', SubmitAnswer.as_view(), name='submit-answer'),
     path('register/', RegisterUser.as_view(), name='api-register'),
+    path('frequency-bands/', FrequencyBandList.as_view(), name='frequency-band-list'),
+    path('eq-challenge/random/', RandomEQChallenge.as_view(), name='random-eq-challenge'),
+    path('eq-challenge/submit/', SubmitEQAnswer.as_view(), name='submit-eq-answer'),
+
 ]
