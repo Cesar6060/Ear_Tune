@@ -8,6 +8,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import GameHistory from './components/GameHistory';
 import ProtectedRoute from './components/ProtectedRoute';
+import FrequencyGame from './components/FrequencyGame';
 import './App.css';
 
 function App() {
@@ -44,6 +45,11 @@ function App() {
             <Route path="/history" element={
               <ProtectedRoute>
                 <GameHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/frequency-game" element={
+              <ProtectedRoute>
+                <FrequencyGame />
               </ProtectedRoute>
             } />
             <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />

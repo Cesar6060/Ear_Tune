@@ -20,6 +20,13 @@ function Home() {
         setLoading(false);
       });
   }, []);
+  
+  const getGamePath = (game) => {
+    if (game.name === 'Frequency Recognition') {
+      return '/frequency-game';
+    }
+    return `/game/${game.id}`;
+  };
 
   if (loading) return <div className="loading">Loading games...</div>;
   if (error) return <div className="error-message">{error}</div>;

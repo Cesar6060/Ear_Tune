@@ -374,6 +374,184 @@ button {
   background-color: #4b5563;
 }
 
+/* Frequency Recognition Game Styles */
+
+.frequency-game-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.game-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: var(--text-light);
+}
+
+.difficulty-selector {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  justify-content: center;
+}
+
+.difficulty-selector button {
+  padding: 0.5rem 1.5rem;
+  border: 2px solid var(--border-color);
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-color);
+}
+
+.difficulty-selector button.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.audio-controls {
+  background: var(--card-bg);
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 2rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.audio-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.audio-buttons button {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.audio-buttons button:hover {
+  background: var(--primary-hover);
+}
+
+.audio-buttons button.playing {
+  background: var(--success-color);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.answer-section {
+  background: var(--card-bg);
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+}
+
+.frequency-band-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 2rem;
+}
+
+.freq-band-btn {
+  padding: 1rem;
+  border: 2px solid var(--border-color);
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-color);
+}
+
+.freq-band-btn:hover {
+  border-color: var(--primary-color);
+}
+
+.freq-band-btn.selected {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.band-name {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.band-range {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: 0.25rem;
+}
+
+.change-amount-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 2rem;
+}
+
+.change-btn {
+  padding: 0.75rem;
+  border: 2px solid var(--border-color);
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  color: var(--text-color);
+}
+
+.change-btn:hover {
+  border-color: var(--primary-color);
+}
+
+.change-btn.selected {
+  background: var(--secondary-color);
+  color: white;
+  border-color: var(--secondary-color);
+}
+
+.submit-answer-btn {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.2rem;
+  background: var(--success-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submit-answer-btn:hover:not(:disabled) {
+  background: #059669;
+}
+
+.submit-answer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Authentication Pages */
 .auth-container {
   display: flex;
@@ -483,6 +661,23 @@ button {
   }
   
   .submit-btn {
+    width: 100%;
+  }
+
+  /* Frequency game responsive styles */
+  .frequency-band-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+  
+  .change-amount-grid {
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  }
+  
+  .audio-buttons {
+    flex-direction: column;
+  }
+  
+  .audio-buttons button {
     width: 100%;
   }
 }
