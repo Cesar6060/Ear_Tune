@@ -1,0 +1,10 @@
+[
+    {
+        "model": "ear_tune.game",
+        "pk": 3,
+        "fields": {
+            "name": "Frequency Recognition",
+            "description": "Train your ears to identify EQ changes - essential for mixing and mastering."
+        }
+    }
+]
