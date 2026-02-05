@@ -2,6 +2,8 @@
 
 import random
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from rest_framework import generics, status, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -249,22 +251,29 @@ class RandomEQChallenge(generics.GenericAPIView):
         difficulty = request.query_params.get('difficulty', 'beginner')
 
         # Get challenges for the frequency game
-        frequency_game = Game.objects.get(name='Frequency Recognition')
-        challenges = EQChallenge.objects.filter(
-            game=frequency_game,
-            difficulty=difficulty
-        )
+        try:
+            frequency_game = Game.objects.get(name='Frequency Recognition')
+            challenges = EQChallenge.objects.filter(
+                game=frequency_game,
+                difficulty=difficulty
+            )
 
-        if not challenges.exists():
+            if not challenges.exists():
+                return Response(
+                    {'detail': f'No challenges available for {difficulty} level.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Select a random challenge (convert QuerySet to list)
+            challenge = random.choice(list(challenges))
+            serializer = self.get_serializer(challenge)
+            return Response(serializer.data)
+
+        except Game.DoesNotExist:
             return Response(
-                {'detail': f'No challenges available for {difficulty} level.'},
+                {'detail': 'Frequency Recognition game not found.'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
-        # Select a random challenge
-        challenge = random.choice(challenges)
-        serializer = self.get_serializer(challenge)
-        return Response(serializer.data)
     
 class SubmitEQAnswer(generics.GenericAPIView):
     """Submit an answer for an EQ challenge."""
@@ -335,8 +344,8 @@ class RandomRhythmChallengeView(generics.GenericAPIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # Select a random challenge
-            challenge = random.choice(challenges)
+            # Select a random challenge (convert QuerySet to list)
+            challenge = random.choice(list(challenges))
             serializer = self.get_serializer(challenge)
             return Response(serializer.data)
 

@@ -86,7 +86,7 @@ function RhythmGame() {
       audioRef.current.play();
 
       // Start visual metronome
-      const bpm = challenge.bpm || 120;
+      const bpm = challenge.tempo || 120;
       const intervalMs = (60 / bpm) * 1000;
 
       metronomeIntervalRef.current = setInterval(() => {
@@ -111,7 +111,7 @@ function RhythmGame() {
     if (!isRecording || hasSubmitted) return;
 
     const currentTime = Date.now();
-    const elapsedTime = (currentTime - startTimeRef.current) / 1000; // Convert to seconds
+    const elapsedTime = currentTime - startTimeRef.current; // Keep in milliseconds
 
     setTappedBeats(prev => [...prev, elapsedTime]);
   };
@@ -127,7 +127,7 @@ function RhythmGame() {
     try {
       const response = await axios.post('/api/v1/rhythm-challenge/submit/', {
         challenge_id: challenge.id,
-        tapped_beats: tappedBeats
+        user_taps: tappedBeats
       });
 
       const { accuracy: scoreAccuracy, correct } = response.data;
@@ -212,7 +212,7 @@ function RhythmGame() {
               className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-2xl flex items-center justify-center"
             >
               <span className="text-white text-2xl font-bold">
-                {challenge?.bpm || 120} BPM
+                {challenge?.tempo || 120} BPM
               </span>
             </motion.div>
           </div>
@@ -411,7 +411,7 @@ function RhythmGame() {
           {challenge && (
             <audio
               ref={audioRef}
-              src={`/static/audio/rhythm_samples/${challenge.audio_file}`}
+              src={`/${challenge.audio_file}`}
               onEnded={() => {
                 setIsPlaying(false);
                 if (metronomeIntervalRef.current) {
