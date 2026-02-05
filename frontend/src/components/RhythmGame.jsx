@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import axios from '../axiosConfig';
+import LevelUpModal from './LevelUpModal';
+import AchievementUnlockModal from './AchievementUnlockModal';
 
 function RhythmGame() {
   const navigate = useNavigate();
@@ -18,6 +20,13 @@ function RhythmGame() {
   const [metronomePulse, setMetronomePulse] = useState(false);
   const [score, setScore] = useState(0);
   const [attempts, setAttempts] = useState(0);
+
+  // Gamification state
+  const [xpEarned, setXpEarned] = useState(0);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [newLevel, setNewLevel] = useState(null);
+  const [currentAchievement, setCurrentAchievement] = useState(null);
+  const [achievementQueue, setAchievementQueue] = useState([]);
 
   // Audio refs
   const audioRef = useRef(null);
@@ -130,7 +139,7 @@ function RhythmGame() {
         user_taps: tappedBeats
       });
 
-      const { accuracy: scoreAccuracy, correct } = response.data;
+      const { accuracy: scoreAccuracy, correct, xp_earned, level_up, new_level, unlocked_achievements } = response.data;
       setAccuracy(scoreAccuracy);
       setAttempts(attempts + 1);
 
@@ -144,6 +153,27 @@ function RhythmGame() {
           colors: ['#667eea', '#764ba2', '#84fab0', '#8fd3f4']
         });
 
+        // Show XP earned
+        if (xp_earned) {
+          setXpEarned(xp_earned);
+          setTimeout(() => setXpEarned(0), 3000);
+        }
+
+        // Show level up modal
+        if (level_up && new_level) {
+          setTimeout(() => {
+            setNewLevel(new_level);
+            setShowLevelUp(true);
+          }, 1000);
+        }
+
+        // Queue achievements to show one by one
+        if (unlocked_achievements && unlocked_achievements.length > 0) {
+          setTimeout(() => {
+            setAchievementQueue(unlocked_achievements);
+          }, level_up ? 4000 : 2000);
+        }
+
         // Auto-load next challenge after celebration
         setTimeout(() => {
           loadNewChallenge();
@@ -153,6 +183,23 @@ function RhythmGame() {
       console.error('Error submitting answer:', error);
       alert('Error submitting your answer. Please try again.');
     }
+  };
+
+  // Handle achievement queue display
+  useEffect(() => {
+    if (achievementQueue.length > 0 && !currentAchievement) {
+      setCurrentAchievement(achievementQueue[0]);
+    }
+  }, [achievementQueue, currentAchievement]);
+
+  const handleAchievementClose = () => {
+    setCurrentAchievement(null);
+    setAchievementQueue(prev => prev.slice(1));
+  };
+
+  const handleLevelUpClose = () => {
+    setShowLevelUp(false);
+    setNewLevel(null);
   };
 
   const resetRecording = () => {
@@ -434,6 +481,44 @@ function RhythmGame() {
           </motion.button>
         </div>
       </div>
+
+      {/* XP Earned Display */}
+      <AnimatePresence>
+        {xpEarned > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.5 }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              transition: { type: "spring", duration: 0.5 }
+            }}
+            exit={{
+              opacity: 0,
+              y: -100,
+              scale: 0.5,
+              transition: { duration: 0.3 }
+            }}
+            className="fixed top-24 left-1/2 transform -translate-x-1/2 z-40"
+          >
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-2xl border-4 border-yellow-300">
+              <motion.span
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 0.5, repeat: 2 }}
+                className="text-3xl font-bold"
+              >
+                +{xpEarned} XP
+              </motion.span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Level Up Modal */}
+      {showLevelUp && <LevelUpModal newLevel={newLevel} xpEarned={xpEarned} onClose={handleLevelUpClose} />}
+
+      {/* Achievement Unlock Modal */}
+      {currentAchievement && <AchievementUnlockModal achievement={currentAchievement} onClose={handleAchievementClose} />}
     </div>
   );
 }

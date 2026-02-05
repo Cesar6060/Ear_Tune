@@ -14,7 +14,11 @@ from .views import (
     RandomEQChallenge,
     SubmitEQAnswer,
     RandomRhythmChallengeView,
-    SubmitRhythmAnswerView
+    SubmitRhythmAnswerView,
+    UserProfileView,
+    AchievementsListView,
+    LeaderboardView,
+    UpdateStreakView
 )
 
 urlpatterns = [
@@ -31,5 +35,10 @@ urlpatterns = [
     path('eq-challenge/submit/', SubmitEQAnswer.as_view(), name='submit-eq-answer'),
     path('rhythm-challenge/random/', RandomRhythmChallengeView.as_view(), name='random-rhythm-challenge'),
     path('rhythm-challenge/submit/', SubmitRhythmAnswerView.as_view(), name='submit-rhythm-answer'),
+    # Gamification endpoints
+    path('profile/', UserProfileView.as_view(), name='user-profile'),
+    path('achievements/', AchievementsListView.as_view(), name='achievements-list'),
+    path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
+    path('update-streak/', UpdateStreakView.as_view(), name='update-streak'),
 
 ]

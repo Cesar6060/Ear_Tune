@@ -7,6 +7,8 @@ import GameDetail from './components/GameDetail';
 import Login from './components/Login';
 import Register from './components/Register';
 import GameHistory from './components/GameHistory';
+import Profile from './components/Profile';
+import Achievements from './components/Achievements';
 import ProtectedRoute from './components/ProtectedRoute';
 import FrequencyGame from './components/FrequencyGame';
 import RhythmGame from './components/RhythmGame';
@@ -56,6 +58,16 @@ function App() {
             <Route path="/game/rhythm" element={
               <ProtectedRoute>
                 <RhythmGame />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/achievements" element={
+              <ProtectedRoute>
+                <Achievements />
               </ProtectedRoute>
             } />
             <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
