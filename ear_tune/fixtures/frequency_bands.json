@@ -1,0 +1,86 @@
+[
+    {
+        "model": "ear_tune.frequencyband",
+        "pk": 1,
+        "fields": {
+            "name": "Sub Bass",
+            "min_frequency": 20,
+            "max_frequency": 60,
+            "center_frequency": 40,
+            "description": "Felt more than heard. Adds weight and power.",
+            "order": 1
+        }
+    },
+    {
+        "model": "ear_tune.frequencyband",
+        "pk": 2,
+        "fields": {
+            "name": "Bass",
+            "min_frequency": 60,
+            "max_frequency": 250,
+            "center_frequency": 120,
+            "description": "Fundamental frequencies of bass instruments.",
+            "order": 2
+        }
+    },
+    {
+        "model": "ear_tune.frequencyband",
+        "pk": 3,
+        "fields": {
+            "name": "Low Mids",
+            "min_frequency": 250,
+            "max_frequency": 500,
+            "center_frequency": 350,
+            "description": "Body and warmth. Can cause muddiness if overdone.",
+            "order": 3
+        }
+    },
+    {
+        "model": "ear_tune.frequencyband",
+        "pk": 4,
+        "fields": {
+            "name": "Mids",
+            "min_frequency": 500,
+            "max_frequency": 2000,
+            "center_frequency": 1000,
+            "description": "Core of most instruments and vocals.",
+            "order": 4
+        }
+    },
+    {
+        "model": "ear_tune.frequencyband",
+        "pk": 5,
+        "fields": {
+            "name": "High Mids",
+            "min_frequency": 2000,
+            "max_frequency": 5000,
+            "center_frequency": 3500,
+            "description": "Presence and clarity. Too much causes harshness.",
+            "order": 5
+        }
+    },
+    {
+        "model": "ear_tune.frequencyband",
+        "pk": 6,
+        "fields": {
+            "name": "Presence",
+            "min_frequency": 5000,
+            "max_frequency": 8000,
+            "center_frequency": 6500,
+            "description": "Definition and articulation.",
+            "order": 6
+        }
+    },
+    {
+        "model": "ear_tune.frequencyband",
+        "pk": 7,
+        "fields": {
+            "name": "Brilliance",
+            "min_frequency": 8000,
+            "max_frequency": 16000,
+            "center_frequency": 12000,
+            "description": "Sparkle and air. Sibilance lives here.",
+            "order": 7
+        }
+    }
+]

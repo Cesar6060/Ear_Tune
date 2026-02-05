@@ -2,14 +2,19 @@
 
 from django.urls import path
 from .views import (
-    GameList, 
-    GameDetail, 
-    ChallengeList, 
-    RandomChallenge, 
+    GameList,
+    GameDetail,
+    ChallengeList,
+    RandomChallenge,
     GameSessionList,
-    CreateGameSession, 
+    CreateGameSession,
     SubmitAnswer,
-    RegisterUser
+    RegisterUser,
+    FrequencyBandList,
+    RandomEQChallenge,
+    SubmitEQAnswer,
+    RandomRhythmChallengeView,
+    SubmitRhythmAnswerView
 )
 
 urlpatterns = [
@@ -21,4 +26,10 @@ urlpatterns = [
     path('game-sessions/create/', CreateGameSession.as_view(), name='create-game-session'),
     path('submit-answer/', SubmitAnswer.as_view(), name='submit-answer'),
     path('register/', RegisterUser.as_view(), name='api-register'),
+    path('frequency-bands/', FrequencyBandList.as_view(), name='frequency-band-list'),
+    path('eq-challenge/random/', RandomEQChallenge.as_view(), name='random-eq-challenge'),
+    path('eq-challenge/submit/', SubmitEQAnswer.as_view(), name='submit-eq-answer'),
+    path('rhythm-challenge/random/', RandomRhythmChallengeView.as_view(), name='random-rhythm-challenge'),
+    path('rhythm-challenge/submit/', SubmitRhythmAnswerView.as_view(), name='submit-rhythm-answer'),
+
 ]
