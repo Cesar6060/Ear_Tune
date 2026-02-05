@@ -246,7 +246,7 @@ function FrequencyGame() {
             />
             <audio
               ref={processedAudioRef}
-              src={`/static/audio/eq_samples/${challenge.source_audio}_${challenge.frequency_band.name.toLowerCase()}_${challenge.change_amount}db.wav`}
+              src={`/static/audio/eq_samples/${challenge.source_audio}_${challenge.frequency_band.name.toLowerCase().replaceAll(' ', '_')}_${challenge.change_amount}db.wav`}
               onEnded={() => setCurrentlyPlaying(null)}
             />
           </>
