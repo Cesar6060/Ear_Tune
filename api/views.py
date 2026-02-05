@@ -209,8 +209,8 @@ class SubmitAnswer(generics.GenericAPIView):
             parent_session=session
         )
 
-        # Get user profile
-        profile = request.user.profile
+        # Get user profile (create if doesn't exist)
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
 
         # Update the parent session
         if is_correct:
@@ -337,8 +337,8 @@ class SubmitEQAnswer(generics.GenericAPIView):
         # Calculate accuracy (100% if correct, 0% if incorrect)
         accuracy = 100 if is_correct else 0
 
-        # Get user profile
-        profile = request.user.profile
+        # Get user profile (create if doesn't exist)
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
 
         # Calculate XP
         # Base XP: 10
@@ -516,8 +516,8 @@ class SubmitRhythmAnswerView(generics.GenericAPIView):
             feedback = "Keep practicing! Listen to the pattern carefully."
             correct = False
 
-        # Get user profile
-        profile = request.user.profile
+        # Get user profile (create if doesn't exist)
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
 
         # Calculate XP
         # Base XP: 10
@@ -589,8 +589,9 @@ class UserProfileView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        """Return the current user's profile."""
-        return UserProfile.objects.get(user=self.request.user)
+        """Return the current user's profile, creating it if it doesn't exist."""
+        profile, created = UserProfile.objects.get_or_create(user=self.request.user)
+        return profile
 
 class AchievementsListView(generics.ListAPIView):
     """
@@ -656,13 +657,8 @@ class UpdateStreakView(APIView):
 
     def post(self, request, *args, **kwargs):
         """Update the user's login streak."""
-        try:
-            profile = UserProfile.objects.get(user=request.user)
-        except UserProfile.DoesNotExist:
-            return Response(
-                {'detail': 'User profile not found.'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        # Get or create profile
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
 
         today = date.today()
 
