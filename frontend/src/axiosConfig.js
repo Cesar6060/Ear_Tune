@@ -1,8 +1,11 @@
 // src/axiosConfig.js - Axios configuration with interceptors
 import axios from 'axios';
 
+// Export API_URL for use in other parts of the application
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -40,7 +43,7 @@ axiosInstance.interceptors.response.use(
         }
         
         const response = await axios.post(
-          'http://localhost:8000/api/token/refresh/',
+          `${API_URL}/api/token/refresh/`,
           { refresh: refreshToken }
         );
         

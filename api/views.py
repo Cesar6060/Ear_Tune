@@ -6,8 +6,8 @@ from rest_framework import generics, status, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from ear_tune.models import Game, Challenge, GameSession, FrequencyBand, EQChallenge
-from .serializers import GameSerializer, ChallengeSerializer, GameSessionSerializer, FrequencyBandSerializer, EQChallengeSerializer
+from ear_tune.models import Game, Challenge, GameSession, FrequencyBand, EQChallenge, RhythmChallenge
+from .serializers import GameSerializer, ChallengeSerializer, GameSessionSerializer, FrequencyBandSerializer, EQChallengeSerializer, RhythmChallengeSerializer
 
 # Keep existing GET views
 class GameList(generics.ListAPIView):  
@@ -310,5 +310,132 @@ class SubmitEQAnswer(generics.GenericAPIView):
                 'frequency_band_id': frequency_band_id,
                 'change_amount': change_amount
             }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+class RandomRhythmChallengeView(generics.GenericAPIView):
+    """GET endpoint that returns a random rhythm challenge."""
+    serializer_class = RhythmChallengeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        difficulty = request.query_params.get('difficulty', 'beginner')
+
+        # Get challenges for the rhythm game
+        try:
+            rhythm_game = Game.objects.get(name='Rhythm Recognition')
+            challenges = RhythmChallenge.objects.filter(
+                game=rhythm_game,
+                difficulty=difficulty
+            )
+
+            if not challenges.exists():
+                return Response(
+                    {'detail': f'No challenges available for {difficulty} level.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Select a random challenge
+            challenge = random.choice(challenges)
+            serializer = self.get_serializer(challenge)
+            return Response(serializer.data)
+
+        except Game.DoesNotExist:
+            return Response(
+                {'detail': 'Rhythm Recognition game not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class SubmitRhythmAnswerView(generics.GenericAPIView):
+    """
+    POST endpoint to submit and validate a rhythm answer.
+    Compares user's tapped timestamps with correct pattern using a tolerance of ±100ms.
+    Returns accuracy percentage, feedback, and score.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        challenge_id = request.data.get('challenge_id')
+        user_taps = request.data.get('user_taps')  # Expected to be a list of timestamps in ms
+
+        if not challenge_id or user_taps is None:
+            return Response(
+                {'detail': 'challenge_id and user_taps are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            challenge = RhythmChallenge.objects.get(id=challenge_id)
+        except RhythmChallenge.DoesNotExist:
+            return Response(
+                {'detail': 'Challenge not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Get the correct pattern (timestamps in ms)
+        correct_pattern = challenge.correct_pattern
+
+        # Validate that user_taps is a list
+        if not isinstance(user_taps, list):
+            return Response(
+                {'detail': 'user_taps must be a list of timestamps.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Calculate accuracy with ±100ms tolerance
+        tolerance = 100  # milliseconds
+        correct_count = 0
+        total_expected = len(correct_pattern)
+
+        # Match each expected tap with the closest user tap
+        matched_user_taps = set()
+
+        for correct_tap in correct_pattern:
+            for i, user_tap in enumerate(user_taps):
+                if i not in matched_user_taps:
+                    if abs(user_tap - correct_tap) <= tolerance:
+                        correct_count += 1
+                        matched_user_taps.add(i)
+                        break
+
+        # Calculate accuracy percentage
+        if total_expected > 0:
+            accuracy = (correct_count / total_expected) * 100
+        else:
+            accuracy = 0
+
+        # Calculate score based on accuracy
+        if accuracy >= 90:
+            score = 100
+            feedback = "Excellent! Perfect rhythm!"
+        elif accuracy >= 75:
+            score = 75
+            feedback = "Great job! Very close to the beat!"
+        elif accuracy >= 60:
+            score = 50
+            feedback = "Good effort! Keep practicing your timing."
+        elif accuracy >= 40:
+            score = 25
+            feedback = "Not quite there. Try listening more carefully to the rhythm."
+        else:
+            score = 0
+            feedback = "Keep practicing! Listen to the pattern carefully."
+
+        # Create a game session record
+        session = GameSession.objects.create(
+            user=request.user,
+            challenge=None,  # RhythmChallenge is separate from Challenge model
+            score=score,
+            active=False
+        )
+
+        response_data = {
+            'accuracy': round(accuracy, 2),
+            'score': score,
+            'feedback': feedback,
+            'correct_taps': correct_count,
+            'total_expected': total_expected,
+            'user_tap_count': len(user_taps)
+        }
 
         return Response(response_data, status=status.HTTP_200_OK)

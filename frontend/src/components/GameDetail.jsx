@@ -1,6 +1,7 @@
 // src/components/GameDetail.jsx - Game component with 3-attempts functionality
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from '../axiosConfig';
 
 function GameDetail() {
@@ -136,80 +137,167 @@ function GameDetail() {
     }
   };
 
-  if (loading && !challenge) return <div className="loading">Loading challenge...</div>;
+  if (loading && !challenge) return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex items-center justify-center min-h-screen"
+    >
+      <div className="text-xl text-indigo-600">Loading challenge...</div>
+    </motion.div>
+  );
+
+  const progressPercentage = (attemptsLeft / 3) * 100;
 
   return (
-    <div className="game-detail-container">
-      {game && <h1>{game.name}</h1>}
-      
-      {gameOver ? (
-        <div className="game-over">
-          <h2>Game Over</h2>
-          <p>Your final score: {score}</p>
-          <button onClick={startNewSession} className="play-again-btn">
-            Play Again
-          </button>
-          <button onClick={() => navigate('/')} className="back-btn">
-            Back to Games
-          </button>
-        </div>
-      ) : (
-        challenge && (
-          <div className="challenge-container">
-            <div className="score-section">
-              <div className="score">Score: {score}</div>
-              <div className="attempts">
-                Attempts left: {attemptsLeft}
-              </div>
-            </div>
-            
-            <div className="challenge-prompt">
-              <h2>{challenge.prompt}</h2>
-              <p>Listen to the note and type your answer.</p>
-              <p className="note-hint">
-                <em>For sharps, use format: "asharp" (e.g., A#), and for naturals: "a" (e.g., A)</em>
-              </p>
-            </div>
-            
-            <div className="audio-section">
-              {audioFile && (
-                <>
-                  <audio ref={audioRef} key={audioFile}>
-                    <source src={`/static/audio/notes/${audioFile}`} type="audio/wav" />
-                    Your browser does not support the audio element.
-                  </audio>
-                  <div className="audio-controls">
-                    <button onClick={playAudioAgain} className="play-btn">
-                      Play Note
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-            
-            <form onSubmit={handleSubmit} className="answer-form">
-              <input
-                type="text"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                placeholder="Enter your answer (e.g., c, csharp)"
-                className="answer-input"
-                autoFocus
-              />
-              <button type="submit" className="submit-btn">
-                Submit Answer
-              </button>
-            </form>
-            
-            {feedback && (
-              <div className={`feedback ${feedbackType}`}>
-                {feedback}
-              </div>
-            )}
-          </div>
-        )
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="game-detail-container min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 px-4 py-8"
+    >
+      {game && (
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="text-4xl font-bold text-center mb-8 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
+        >
+          {game.name}
+        </motion.h1>
       )}
-    </div>
+
+      <AnimatePresence mode="wait">
+        {gameOver ? (
+          <motion.div
+            key="game-over"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.4 }}
+            className="game-over max-w-md mx-auto bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl p-8 text-center border border-slate-200"
+          >
+            <h2 className="text-3xl font-bold mb-4 text-slate-800">Game Over</h2>
+            <p className="text-xl mb-6 text-slate-700">Your final score: <span className="font-bold text-indigo-600">{score}</span></p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={startNewSession}
+              className="play-again-btn w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold py-3 px-6 rounded-lg mb-3 shadow-md hover:shadow-lg transition-shadow"
+            >
+              Play Again
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/')}
+              className="back-btn w-full bg-gradient-to-r from-slate-500 to-slate-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+            >
+              Back to Games
+            </motion.button>
+          </motion.div>
+        ) : (
+          challenge && (
+            <motion.div
+              key="challenge"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="challenge-container max-w-2xl mx-auto bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl p-8 border border-slate-200"
+            >
+              <div className="score-section flex justify-between items-center mb-6">
+                <motion.div
+                  key={score}
+                  initial={{ scale: 1.2 }}
+                  animate={{ scale: 1 }}
+                  className="score text-2xl font-bold text-indigo-600"
+                >
+                  Score: {score}
+                </motion.div>
+                <div className="attempts-container">
+                  <div className="text-sm text-slate-600 mb-1">
+                    Attempts left: {attemptsLeft}
+                  </div>
+                  <div className="w-32 h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <motion.div
+                      className={`h-full ${attemptsLeft === 3 ? 'bg-green-500' : attemptsLeft === 2 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                      initial={{ width: '100%' }}
+                      animate={{ width: `${progressPercentage}%` }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="challenge-prompt mb-6">
+                <h2 className="text-2xl font-bold mb-2 text-slate-800">{challenge.prompt}</h2>
+                <p className="text-slate-600 mb-2">Listen to the note and type your answer.</p>
+                <p className="note-hint text-sm text-slate-500 italic">
+                  For sharps, use format: "asharp" (e.g., A#), and for naturals: "a" (e.g., A)
+                </p>
+              </div>
+
+              <div className="audio-section mb-6">
+                {audioFile && (
+                  <>
+                    <audio ref={audioRef} key={audioFile}>
+                      <source src={`/static/audio/notes/${audioFile}`} type="audio/wav" />
+                      Your browser does not support the audio element.
+                    </audio>
+                    <div className="audio-controls flex justify-center">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={playAudioAgain}
+                        className="play-btn bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                      >
+                        Play Note
+                      </motion.button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <form onSubmit={handleSubmit} className="answer-form space-y-4">
+                <input
+                  type="text"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  placeholder="Enter your answer (e.g., c, csharp)"
+                  className="answer-input w-full px-4 py-3 rounded-lg border-2 border-slate-300 focus:border-indigo-500 focus:outline-none transition-colors text-lg"
+                  autoFocus
+                />
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  className="submit-btn w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                >
+                  Submit Answer
+                </motion.button>
+              </form>
+
+              <AnimatePresence>
+                {feedback && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className={`feedback mt-4 p-4 rounded-lg text-center font-semibold ${
+                      feedbackType === 'success'
+                        ? 'bg-green-100 text-green-800 border border-green-300'
+                        : 'bg-red-100 text-red-800 border border-red-300'
+                    }`}
+                  >
+                    {feedback}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
