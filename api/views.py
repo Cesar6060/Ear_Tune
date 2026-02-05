@@ -1,15 +1,17 @@
 # api/views.py - Updated API views for the 3-attempts functionality
 
 import random
+from datetime import date, timedelta
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from rest_framework import generics, status, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from ear_tune.models import Game, Challenge, GameSession, FrequencyBand, EQChallenge, RhythmChallenge
-from .serializers import GameSerializer, ChallengeSerializer, GameSessionSerializer, FrequencyBandSerializer, EQChallengeSerializer, RhythmChallengeSerializer
+from ear_tune.models import Game, Challenge, GameSession, FrequencyBand, EQChallenge, RhythmChallenge, UserProfile, Achievement, UserAchievement, check_and_unlock_achievements
+from .serializers import GameSerializer, ChallengeSerializer, GameSessionSerializer, FrequencyBandSerializer, EQChallengeSerializer, RhythmChallengeSerializer, UserProfileSerializer, AchievementSerializer, UserAchievementSerializer
 
 # Keep existing GET views
 class GameList(generics.ListAPIView):  
@@ -206,17 +208,50 @@ class SubmitAnswer(generics.GenericAPIView):
             is_attempt=True,
             parent_session=session
         )
-        
+
+        # Get user profile
+        profile = request.user.profile
+
         # Update the parent session
         if is_correct:
             session.score += 1
+
+            # Calculate XP (simplified for note challenge - 100% accuracy)
+            # Base XP: 10, Perfect bonus: +25, Difficulty: assume beginner (1x)
+            base_xp = 10
+            perfect_bonus = 25
+            xp_earned = base_xp + perfect_bonus
+
+            # Award XP and check for level up
+            old_level = profile.level
+            level_up = profile.add_xp(xp_earned)
+            new_level = profile.level
+
+            # Update profile stats
+            profile.total_games_played += 1
+            profile.total_correct_answers += 1
+            profile.update_streak()
+            profile.save()
+
+            # Check for achievement unlocks
+            unlocked_achievements = check_and_unlock_achievements(request.user)
+
             response_data = {
                 'result': 'Correct!',
                 'score': session.score,
-                'attempts_left': session.attempts_left
+                'attempts_left': session.attempts_left,
+                'xp_earned': xp_earned,
+                'level_up': level_up,
+                'new_level': new_level,
+                'unlocked_achievements': unlocked_achievements
             }
         else:
             session.attempts_left -= 1
+
+            # Update profile stats (game played, but not correct)
+            profile.total_games_played += 1
+            profile.save()
+
             if session.attempts_left <= 0:
                 session.active = False
                 response_data = {
@@ -231,9 +266,9 @@ class SubmitAnswer(generics.GenericAPIView):
                     'score': session.score,
                     'attempts_left': session.attempts_left
                 }
-        
+
         session.save()
-        
+
         return Response(response_data, status=status.HTTP_200_OK)
 
 class FrequencyBandList(generics.ListAPIView):
@@ -299,11 +334,53 @@ class SubmitEQAnswer(generics.GenericAPIView):
             challenge.change_amount == change_amount
         )
 
+        # Calculate accuracy (100% if correct, 0% if incorrect)
+        accuracy = 100 if is_correct else 0
+
+        # Get user profile
+        profile = request.user.profile
+
+        # Calculate XP
+        # Base XP: 10
+        base_xp = 10
+
+        # Accuracy bonus: accuracy * 0.5 (max 50 points for 100%)
+        accuracy_bonus = accuracy * 0.5
+
+        # Difficulty multiplier
+        difficulty_multipliers = {
+            'beginner': 1.0,
+            'intermediate': 1.5,
+            'advanced': 2.0
+        }
+        difficulty_multiplier = difficulty_multipliers.get(challenge.difficulty, 1.0)
+
+        # Perfect score bonus: +25 XP for 100% accuracy
+        perfect_bonus = 25 if accuracy == 100 else 0
+
+        # Calculate total XP
+        xp_earned = int((base_xp + accuracy_bonus) * difficulty_multiplier + perfect_bonus)
+
+        # Award XP and check for level up
+        old_level = profile.level
+        level_up = profile.add_xp(xp_earned)
+        new_level = profile.level
+
+        # Update profile stats
+        profile.total_games_played += 1
+        if is_correct:
+            profile.total_correct_answers += 1
+        profile.update_streak()
+        profile.save()
+
+        # Check for achievement unlocks
+        unlocked_achievements = check_and_unlock_achievements(request.user)
+
         # Create a game session record
         session = GameSession.objects.create(
             user=request.user,
             challenge=None,
-            score= 1 if is_correct else 0,
+            score=100 if is_correct else 0,
             active=False
         )
 
@@ -312,7 +389,11 @@ class SubmitEQAnswer(generics.GenericAPIView):
             'correct_answer': {
                 'frequency_band': challenge.frequency_band.name,
                 'change_amount': challenge.change_amount
-            }
+            },
+            'xp_earned': xp_earned,
+            'level_up': level_up,
+            'new_level': new_level,
+            'unlocked_achievements': unlocked_achievements
         }
         if not is_correct:
             response_data['user_answer'] = {
@@ -417,18 +498,62 @@ class SubmitRhythmAnswerView(generics.GenericAPIView):
         if accuracy >= 90:
             score = 100
             feedback = "Excellent! Perfect rhythm!"
+            correct = True
         elif accuracy >= 75:
             score = 75
             feedback = "Great job! Very close to the beat!"
+            correct = False
         elif accuracy >= 60:
             score = 50
             feedback = "Good effort! Keep practicing your timing."
+            correct = False
         elif accuracy >= 40:
             score = 25
             feedback = "Not quite there. Try listening more carefully to the rhythm."
+            correct = False
         else:
             score = 0
             feedback = "Keep practicing! Listen to the pattern carefully."
+            correct = False
+
+        # Get user profile
+        profile = request.user.profile
+
+        # Calculate XP
+        # Base XP: 10
+        base_xp = 10
+
+        # Accuracy bonus: accuracy * 0.5 (max 50 points for 100%)
+        accuracy_bonus = accuracy * 0.5
+
+        # Difficulty multiplier
+        difficulty_multipliers = {
+            'beginner': 1.0,
+            'intermediate': 1.5,
+            'advanced': 2.0
+        }
+        difficulty_multiplier = difficulty_multipliers.get(challenge.difficulty, 1.0)
+
+        # Perfect score bonus: +25 XP for 100% accuracy
+        perfect_bonus = 25 if accuracy == 100 else 0
+
+        # Calculate total XP
+        xp_earned = int((base_xp + accuracy_bonus) * difficulty_multiplier + perfect_bonus)
+
+        # Award XP and check for level up
+        old_level = profile.level
+        level_up = profile.add_xp(xp_earned)
+        new_level = profile.level
+
+        # Update profile stats
+        profile.total_games_played += 1
+        if accuracy >= 90:  # Consider >= 90% as correct
+            profile.total_correct_answers += 1
+        profile.update_streak()
+        profile.save()
+
+        # Check for achievement unlocks
+        unlocked_achievements = check_and_unlock_achievements(request.user)
 
         # Create a game session record
         session = GameSession.objects.create(
@@ -442,9 +567,127 @@ class SubmitRhythmAnswerView(generics.GenericAPIView):
             'accuracy': round(accuracy, 2),
             'score': score,
             'feedback': feedback,
+            'correct': correct,
             'correct_taps': correct_count,
             'total_expected': total_expected,
-            'user_tap_count': len(user_taps)
+            'user_tap_count': len(user_taps),
+            'xp_earned': xp_earned,
+            'level_up': level_up,
+            'new_level': new_level,
+            'unlocked_achievements': unlocked_achievements
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+# Gamification API Views
+
+class UserProfileView(generics.RetrieveAPIView):
+    """
+    GET endpoint that returns the current user's profile with stats.
+    """
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        """Return the current user's profile."""
+        return UserProfile.objects.get(user=self.request.user)
+
+class AchievementsListView(generics.ListAPIView):
+    """
+    GET endpoint that returns all achievements with locked/unlocked status for the current user.
+    """
+    serializer_class = AchievementSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Return all achievements."""
+        return Achievement.objects.all()
+
+    def list(self, request, *args, **kwargs):
+        """Override list to include locked/unlocked status."""
+        achievements = self.get_queryset()
+        user_achievements = UserAchievement.objects.filter(user=request.user).values_list('achievement_id', flat=True)
+
+        achievements_data = []
+        for achievement in achievements:
+            achievement_data = AchievementSerializer(achievement).data
+            achievement_data['unlocked'] = achievement.id in user_achievements
+
+            # If unlocked, get the unlock date
+            if achievement_data['unlocked']:
+                user_achievement = UserAchievement.objects.get(user=request.user, achievement=achievement)
+                achievement_data['unlocked_at'] = user_achievement.unlocked_at
+            else:
+                achievement_data['unlocked_at'] = None
+
+            achievements_data.append(achievement_data)
+
+        return Response(achievements_data)
+
+class LeaderboardView(generics.ListAPIView):
+    """
+    GET endpoint that returns the top 10 users by XP.
+    """
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Return top 10 users by XP."""
+        return UserProfile.objects.select_related('user').order_by('-xp')[:10]
+
+    def list(self, request, *args, **kwargs):
+        """Override list to include username and rank."""
+        queryset = self.get_queryset()
+
+        leaderboard_data = []
+        for rank, profile in enumerate(queryset, start=1):
+            profile_data = UserProfileSerializer(profile).data
+            profile_data['rank'] = rank
+            profile_data['username'] = profile.user.username
+            leaderboard_data.append(profile_data)
+
+        return Response(leaderboard_data)
+
+class UpdateStreakView(APIView):
+    """
+    POST endpoint to update user's streak on login.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        """Update the user's login streak."""
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+        except UserProfile.DoesNotExist:
+            return Response(
+                {'detail': 'User profile not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        today = date.today()
+
+        # If last login was yesterday, increment streak
+        if profile.last_login_date == today - timedelta(days=1):
+            profile.current_streak += 1
+
+            # Update longest streak if current is greater
+            if profile.current_streak > profile.longest_streak:
+                profile.longest_streak = profile.current_streak
+
+        # If last login was today, do nothing (already logged in today)
+        elif profile.last_login_date == today:
+            pass
+
+        # If last login was more than 1 day ago, reset streak
+        else:
+            profile.current_streak = 1
+
+        # Update last login date
+        profile.last_login_date = today
+        profile.save()
+
+        return Response({
+            'current_streak': profile.current_streak,
+            'longest_streak': profile.longest_streak,
+            'last_login_date': profile.last_login_date
+        }, status=status.HTTP_200_OK)

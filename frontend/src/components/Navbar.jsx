@@ -1,13 +1,29 @@
 // src/components/NavBar.jsx - Navigation bar component
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import XPBar from './XPBar';
+import axios from '../axiosConfig';
 
 
 function NavBar({ isAuthenticated, onLogout }) {
   const location = useLocation();
+  const [profile, setProfile] = useState(null);
 
   const isActive = (path) => location.pathname === path;
+
+  // Fetch user profile if authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      axios.get('/api/v1/profile/')
+        .then(response => {
+          setProfile(response.data);
+        })
+        .catch(error => {
+          console.error("Error fetching profile:", error);
+        });
+    }
+  }, [isAuthenticated, location.pathname]); // Refresh on route change
 
   return (
     <motion.nav
@@ -31,6 +47,15 @@ function NavBar({ isAuthenticated, onLogout }) {
         <div className="nav-links flex gap-4 items-center">
           {isAuthenticated ? (
             <>
+              {/* XP Bar */}
+              {profile && (
+                <XPBar
+                  currentXP={profile.current_xp}
+                  xpForNextLevel={profile.xp_for_next_level}
+                  level={profile.level}
+                />
+              )}
+
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -55,6 +80,32 @@ function NavBar({ isAuthenticated, onLogout }) {
                   )}
                 </Link>
               </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative"
+              >
+                <Link
+                  to="/profile"
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                    isActive('/profile')
+                      ? 'text-white'
+                      : 'text-slate-700 hover:text-indigo-600'
+                  }`}
+                >
+                  Profile
+                  {isActive('/profile') && (
+                    <motion.div
+                      layoutId="activeIndicator"
+                      className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg -z-10"
+                      initial={false}
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                </Link>
+              </motion.div>
+
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}

@@ -1,7 +1,7 @@
 # api/serializers.py - Updated serializers with the new GameSession fields
 
 from rest_framework import serializers
-from ear_tune.models import Game, Challenge, GameSession, FrequencyBand, EQChallenge, RhythmChallenge
+from ear_tune.models import Game, Challenge, GameSession, FrequencyBand, EQChallenge, RhythmChallenge, UserProfile, Achievement, UserAchievement
 
 class GameSerializer(serializers.ModelSerializer):
     """Converts Game instances into JSON format and validates input data."""
@@ -50,3 +50,23 @@ class RhythmChallengeSerializer(serializers.ModelSerializer):
         model = RhythmChallenge
         fields = ['id', 'pattern_data', 'tempo', 'time_signature',
                  'difficulty', 'audio_file', 'correct_pattern']
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Converts UserProfile instances to/from JSON."""
+    class Meta:
+        model = UserProfile
+        fields = '__all__'
+
+class AchievementSerializer(serializers.ModelSerializer):
+    """Converts Achievement instances to/from JSON."""
+    class Meta:
+        model = Achievement
+        fields = '__all__'
+
+class UserAchievementSerializer(serializers.ModelSerializer):
+    """Converts UserAchievement instances to/from JSON with nested achievement data."""
+    achievement = AchievementSerializer(read_only=True)
+
+    class Meta:
+        model = UserAchievement
+        fields = '__all__'
