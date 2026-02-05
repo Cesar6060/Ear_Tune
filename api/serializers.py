@@ -53,9 +53,21 @@ class RhythmChallengeSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     """Converts UserProfile instances to/from JSON."""
+    current_xp = serializers.IntegerField(source='xp', read_only=True)
+    xp_for_next_level = serializers.SerializerMethodField()
+    username = serializers.CharField(source='user.username', read_only=True)
+    date_joined = serializers.DateTimeField(source='user.date_joined', read_only=True)
+
     class Meta:
         model = UserProfile
-        fields = '__all__'
+        fields = ['id', 'current_xp', 'level', 'xp_for_next_level', 'username', 'date_joined',
+                  'total_games_played', 'total_correct_answers', 'current_streak',
+                  'longest_streak', 'last_activity_date', 'created_at']
+
+    def get_xp_for_next_level(self, obj):
+        """Calculate XP needed for next level."""
+        next_level = obj.level + 1
+        return (next_level - 1) ** 2 * 100
 
 class AchievementSerializer(serializers.ModelSerializer):
     """Converts Achievement instances to/from JSON."""
