@@ -32,6 +32,7 @@ function FrequencyGame() {
   const [attempts, setAttempts] = useState(0);
   const [currentChallenge, setCurrentChallenge] = useState(null);
   const [selectedBand, setSelectedBand] = useState(null);
+  const [selectedChange, setSelectedChange] = useState(null); // 'boost' or 'cut'
   const [feedback, setFeedback] = useState(null);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -135,6 +136,7 @@ function FrequencyGame() {
         frequencyBandId: challenge.frequency_band.id
       });
       setSelectedBand(null);
+      setSelectedChange(null);
       setFeedback(null);
     } catch (error) {
       console.error('Error fetching challenge:', error);
@@ -149,6 +151,7 @@ function FrequencyGame() {
         centerHz: randomBand.centerHz
       });
       setSelectedBand(null);
+      setSelectedChange(null);
       setFeedback(null);
     } finally {
       setLoading(false);
@@ -216,9 +219,14 @@ function FrequencyGame() {
 
   // Submit answer
   const handleSubmit = async () => {
-    if (!selectedBand || !currentChallenge) return;
+    if (!selectedBand || !selectedChange || !currentChallenge) return;
 
-    const isCorrect = selectedBand.id === currentChallenge.correctBand.id;
+    // Check if both band and boost/cut direction are correct
+    const isBandCorrect = selectedBand.id === currentChallenge.correctBand.id;
+    const isChangeCorrect =
+      (selectedChange === 'boost' && currentChallenge.changeDb > 0) ||
+      (selectedChange === 'cut' && currentChallenge.changeDb < 0);
+    const isCorrect = isBandCorrect && isChangeCorrect;
 
     // If we have a challenge ID from the API, submit to backend for XP
     if (currentChallenge.id && currentChallenge.frequencyBandId) {
@@ -233,10 +241,15 @@ function FrequencyGame() {
           ? parseInt(selectedBackendBand.id, 10)
           : parseInt(currentChallenge.frequencyBandId, 10);
 
+        // Send user's guess about change direction with difficulty magnitude
+        const userChangeAmount = selectedChange === 'boost'
+          ? Math.abs(currentChallenge.changeDb)
+          : -Math.abs(currentChallenge.changeDb);
+
         const response = await axios.post('/api/v1/eq-challenge/submit/', {
           challenge_id: currentChallenge.id,
           frequency_band_id: userSelectedBandId,
-          change_amount: currentChallenge.changeDb
+          change_amount: userChangeAmount
         });
 
         const { correct, xp_earned, level_up, new_level, unlocked_achievements } = response.data;
@@ -330,6 +343,7 @@ function FrequencyGame() {
     await generateChallenge();
     setFeedback(null);
     setSelectedBand(null);
+    setSelectedChange(null);
   };
 
   // Handle achievement queue - show one at a time
@@ -596,19 +610,57 @@ function FrequencyGame() {
                   ))}
                 </div>
 
+                {/* Boost or Cut Selection */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-slate-800 mb-4 text-center">
+                    Was it boosted or cut?
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <motion.button
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedChange('boost')}
+                      className={`py-6 px-6 rounded-2xl font-bold text-lg transition-all duration-300 ${
+                        selectedChange === 'boost'
+                          ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-2xl scale-105 ring-4 ring-green-200'
+                          : 'bg-gradient-to-br from-white to-slate-50 text-slate-700 hover:from-green-50 hover:to-emerald-50 shadow-lg hover:shadow-xl'
+                      }`}
+                    >
+                      <div className="text-4xl mb-2">📈</div>
+                      <div className="text-xl">Boosted (+)</div>
+                      <div className="text-sm opacity-75 mt-1">Frequency increased</div>
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedChange('cut')}
+                      className={`py-6 px-6 rounded-2xl font-bold text-lg transition-all duration-300 ${
+                        selectedChange === 'cut'
+                          ? 'bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-2xl scale-105 ring-4 ring-red-200'
+                          : 'bg-gradient-to-br from-white to-slate-50 text-slate-700 hover:from-red-50 hover:to-rose-50 shadow-lg hover:shadow-xl'
+                      }`}
+                    >
+                      <div className="text-4xl mb-2">📉</div>
+                      <div className="text-xl">Cut (−)</div>
+                      <div className="text-sm opacity-75 mt-1">Frequency decreased</div>
+                    </motion.button>
+                  </div>
+                </div>
+
                 <motion.button
-                  whileHover={{ scale: selectedBand ? 1.02 : 1 }}
+                  whileHover={{ scale: selectedBand && selectedChange ? 1.02 : 1 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleSubmit}
-                  disabled={!selectedBand}
+                  disabled={!selectedBand || !selectedChange}
                   className={`relative w-full py-5 rounded-2xl font-bold text-xl transition-all duration-300 overflow-hidden group ${
-                    selectedBand
+                    selectedBand && selectedChange
                       ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white shadow-2xl shadow-green-500/50 hover:shadow-3xl'
                       : 'bg-gradient-to-r from-slate-300 to-slate-400 text-slate-500 cursor-not-allowed'
                   }`}
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
-                    {selectedBand ? (
+                    {selectedBand && selectedChange ? (
                       <>
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -620,11 +672,11 @@ function FrequencyGame() {
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
-                        Select a frequency first
+                        {!selectedBand ? 'Select frequency & boost/cut' : 'Select boost or cut'}
                       </>
                     )}
                   </span>
-                  {selectedBand && (
+                  {selectedBand && selectedChange && (
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   )}
                 </motion.button>
