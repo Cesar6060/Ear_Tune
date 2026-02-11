@@ -212,7 +212,16 @@ function FrequencyGame() {
   };
 
   // Start game
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
+    // Resume AudioContext on user gesture for mobile compatibility
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+      } catch (e) {
+        console.error('Failed to resume AudioContext:', e);
+      }
+    }
+
     setGameStarted(true);
     generateChallenge();
   };
@@ -237,9 +246,19 @@ function FrequencyGame() {
         );
 
         // Ensure ID is an integer to match backend expectations
-        const userSelectedBandId = selectedBackendBand
-          ? parseInt(selectedBackendBand.id, 10)
-          : parseInt(currentChallenge.frequencyBandId, 10);
+        let userSelectedBandId;
+        if (selectedBackendBand?.id) {
+          userSelectedBandId = parseInt(selectedBackendBand.id, 10);
+        } else if (currentChallenge.frequencyBandId) {
+          userSelectedBandId = parseInt(currentChallenge.frequencyBandId, 10);
+        } else {
+          throw new Error('Unable to determine frequency band ID');
+        }
+
+        // Validate parseInt result
+        if (isNaN(userSelectedBandId)) {
+          throw new Error('Invalid frequency band ID');
+        }
 
         // Send user's guess about change direction with difficulty magnitude
         const userChangeAmount = selectedChange === 'boost'
@@ -290,9 +309,12 @@ function FrequencyGame() {
             }, level_up ? 4000 : 2000);
           }
         } else {
+          const correctBandName = response.data.correct_answer?.frequency_band
+            || currentChallenge.correctBand.name;
+          const correctChange = currentChallenge.changeDb > 0 ? 'boosted' : 'cut';
           setFeedback({
             correct: false,
-            message: `Incorrect. It was ${response.data.correct_answer.frequency_band}`
+            message: `Incorrect. It was ${correctBandName} ${correctChange}`
           });
         }
       } catch (error) {
