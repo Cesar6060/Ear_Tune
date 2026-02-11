@@ -5,32 +5,24 @@ EarTune is an interactive web application designed to help musicians develop the
 ## Screenshots
 
 ### Game Selection
-![Home Page](screenshots/home-page.png)
-*Choose from multiple ear training exercises*
+![Game Selection](screenshots/Games.png)
+*Choose from multiple ear training exercises with beautiful card-based UI*
 
 ### Note Identification Game
-![Note Game](screenshots/note-game.png)
-*Piano-style interface for easy note selection*
+![Note Game](screenshots/Notes_Game.png)
+*Piano-style interface for easy note selection with visual feedback*
 
 ### Frequency Recognition Game
-![Frequency Game - Playing](screenshots/frequency-game-playing.png)
+![Frequency Recognition](screenshots/Frequencies.png)
 *Identify which frequency band was modified and whether it was boosted or cut*
 
-![Frequency Game - Selecting](screenshots/frequency-game-selecting.png)
-*Select the frequency band and boost/cut direction*
+### Achievements
+![Achievements](screenshots/Achievements.png)
+*Track your progress with unlockable achievements and badges*
 
-### Gamification Features
-![Level Up](screenshots/level-up.png)
-*Level up celebration with XP rewards*
-
-![Achievement Unlock](screenshots/achievement-unlock.png)
-*Unlock achievements as you progress*
-
-### User Interface
-![Navigation](screenshots/navigation.png)
-*Clean navigation with XP progress and dropdown menu*
-
-> **Note**: Add your screenshots to the `screenshots/` directory in the project root. Recommended size: 1200px wide for optimal viewing.
+### User Profile
+![Profile](screenshots/Profile.png)
+*View your stats, level, XP progress, and game history*
 
 ## Features
 
