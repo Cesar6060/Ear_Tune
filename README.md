@@ -2,6 +2,36 @@
 
 EarTune is an interactive web application designed to help musicians develop their ear training skills through engaging, game-like exercises including note identification and frequency recognition challenges.
 
+## Screenshots
+
+### Game Selection
+![Home Page](screenshots/home-page.png)
+*Choose from multiple ear training exercises*
+
+### Note Identification Game
+![Note Game](screenshots/note-game.png)
+*Piano-style interface for easy note selection*
+
+### Frequency Recognition Game
+![Frequency Game - Playing](screenshots/frequency-game-playing.png)
+*Identify which frequency band was modified and whether it was boosted or cut*
+
+![Frequency Game - Selecting](screenshots/frequency-game-selecting.png)
+*Select the frequency band and boost/cut direction*
+
+### Gamification Features
+![Level Up](screenshots/level-up.png)
+*Level up celebration with XP rewards*
+
+![Achievement Unlock](screenshots/achievement-unlock.png)
+*Unlock achievements as you progress*
+
+### User Interface
+![Navigation](screenshots/navigation.png)
+*Clean navigation with XP progress and dropdown menu*
+
+> **Note**: Add your screenshots to the `screenshots/` directory in the project root. Recommended size: 1200px wide for optimal viewing.
+
 ## Features
 
 ### Core Functionality
