@@ -156,8 +156,18 @@ function FrequencyGame() {
   };
 
   // Play audio
-  const playAudio = (withFilter = false) => {
+  const playAudio = async (withFilter = false) => {
     if (!audioContextRef.current || !noiseBufferRef.current) return;
+
+    // Resume AudioContext if suspended (required for autoplay policy)
+    if (audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+      } catch (e) {
+        console.error('Failed to resume AudioContext:', e);
+        return;
+      }
+    }
 
     // Stop any currently playing audio
     if (sourceRef.current) {

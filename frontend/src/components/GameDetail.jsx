@@ -100,7 +100,11 @@ function GameDetail() {
   // Play audio when a new challenge is loaded
   useEffect(() => {
     if (audioRef.current && !loading && challenge) {
-      audioRef.current.play();
+      audioRef.current.play().catch(error => {
+        // Autoplay was prevented by browser policy
+        // User will need to click play button manually
+        console.warn('Autoplay prevented:', error);
+      });
     }
   }, [challenge, loading]);
 
@@ -247,7 +251,10 @@ function GameDetail() {
   const playAudioAgain = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
-      audioRef.current.play();
+      audioRef.current.play().catch(error => {
+        // Handle play() rejection gracefully
+        console.warn('Audio play prevented:', error);
+      });
     }
   };
 
