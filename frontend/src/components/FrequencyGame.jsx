@@ -245,19 +245,28 @@ function FrequencyGame() {
           fb => fb.name === selectedBand.name
         );
 
-        // Ensure ID is an integer to match backend expectations
-        let userSelectedBandId;
-        if (selectedBackendBand?.id) {
-          userSelectedBandId = parseInt(selectedBackendBand.id, 10);
-        } else if (currentChallenge.frequencyBandId) {
-          userSelectedBandId = parseInt(currentChallenge.frequencyBandId, 10);
-        } else {
-          throw new Error('Unable to determine frequency band ID');
+        // Critical: We must have the user's selected band ID, not the correct answer
+        if (!selectedBackendBand?.id) {
+          // If we can't map user selection, show error instead of falling back to correct answer
+          setFeedback({
+            correct: false,
+            message: 'Unable to submit answer. Please refresh and try again.'
+          });
+          console.error('Cannot map user selection to backend frequency band ID. Available bands:', frequencyBands);
+          return;
         }
+
+        // Ensure ID is an integer to match backend expectations
+        const userSelectedBandId = parseInt(selectedBackendBand.id, 10);
 
         // Validate parseInt result
         if (isNaN(userSelectedBandId)) {
-          throw new Error('Invalid frequency band ID');
+          setFeedback({
+            correct: false,
+            message: 'Invalid selection. Please try again.'
+          });
+          console.error('Invalid frequency band ID:', selectedBackendBand.id);
+          return;
         }
 
         // Send user's guess about change direction with difficulty magnitude
