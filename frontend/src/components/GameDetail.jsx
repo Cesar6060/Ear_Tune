@@ -217,10 +217,6 @@ function GameDetail() {
         }
       }
     } catch (error) {
-      console.error("Error submitting answer:", error);
-      console.error("Error response:", error.response?.data);
-      console.error("Error status:", error.response?.status);
-
       const errorMessage = error.response?.data?.detail ||
                           error.response?.data?.message ||
                           "Error submitting your answer. Please try again.";

@@ -25,7 +25,7 @@ function NavBar({ isAuthenticated, onLogout }) {
   }, [isAuthenticated, location.pathname]);
 
   // Calculate XP percentage
-  const xpPercentage = profile
+  const xpPercentage = profile && profile.xp_for_next_level > 0
     ? Math.min((profile.current_xp / profile.xp_for_next_level) * 100, 100)
     : 0;
 

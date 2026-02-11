@@ -35,6 +35,7 @@ function FrequencyGame() {
   const [feedback, setFeedback] = useState(null);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [frequencyBands, setFrequencyBands] = useState([]);
 
   // Gamification state
   const [xpEarned, setXpEarned] = useState(0);
@@ -48,7 +49,7 @@ function FrequencyGame() {
   const noiseBufferRef = useRef(null);
   const sourceRef = useRef(null);
 
-  // Initialize audio context
+  // Initialize audio context and fetch frequency bands
   useEffect(() => {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) {
@@ -58,6 +59,19 @@ function FrequencyGame() {
 
     audioContextRef.current = new AudioContext();
     generatePinkNoise();
+
+    // Fetch frequency bands from backend
+    const fetchFrequencyBands = async () => {
+      try {
+        const response = await axios.get('/api/v1/frequency-bands/');
+        setFrequencyBands(response.data);
+      } catch (error) {
+        console.error('Error fetching frequency bands:', error);
+        // Fallback: use default mapping if API fails
+      }
+    };
+
+    fetchFrequencyBands();
 
     return () => {
       if (audioContextRef.current) {
@@ -200,9 +214,18 @@ function FrequencyGame() {
     // If we have a challenge ID from the API, submit to backend for XP
     if (currentChallenge.id && currentChallenge.frequencyBandId) {
       try {
+        // Map user's selected band to backend frequency band ID
+        const selectedBackendBand = frequencyBands.find(
+          fb => fb.name === selectedBand.name
+        );
+
+        const userSelectedBandId = selectedBackendBand
+          ? selectedBackendBand.id
+          : currentChallenge.frequencyBandId;
+
         const response = await axios.post('/api/v1/eq-challenge/submit/', {
           challenge_id: currentChallenge.id,
-          frequency_band_id: currentChallenge.frequencyBandId,
+          frequency_band_id: userSelectedBandId,
           change_amount: currentChallenge.changeDb
         });
 
@@ -531,7 +554,7 @@ function FrequencyGame() {
                       onClick={() => setSelectedBand(band)}
                       className={`relative py-8 px-4 rounded-2xl font-bold text-lg transition-all duration-300 overflow-hidden ${
                         selectedBand?.id === band.id
-                          ? `bg-gradient-to-br ${band.color} text-white shadow-2xl shadow-${band.id}-500/50 scale-105 ring-4 ring-white ring-opacity-50`
+                          ? `bg-gradient-to-br ${band.color} text-white shadow-2xl scale-105 ring-4 ring-white ring-opacity-50`
                           : 'bg-gradient-to-br from-white to-slate-50 text-slate-700 hover:from-slate-50 hover:to-slate-100 shadow-lg hover:shadow-xl'
                       }`}
                     >
