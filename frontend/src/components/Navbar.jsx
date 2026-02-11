@@ -1,5 +1,5 @@
 // src/components/NavBar.jsx - Navigation bar component
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from '../axiosConfig';
@@ -8,6 +8,7 @@ function NavBar({ isAuthenticated, onLogout }) {
   const location = useLocation();
   const [profile, setProfile] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const dropdownRef = useRef(null);
 
   const isActive = (path) => location.pathname === path;
 
@@ -28,6 +29,23 @@ function NavBar({ isAuthenticated, onLogout }) {
   useEffect(() => {
     setShowUserMenu(false);
   }, [location.pathname]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   // Calculate XP percentage
   const xpPercentage = profile && profile.xp_for_next_level > 0
@@ -65,7 +83,7 @@ function NavBar({ isAuthenticated, onLogout }) {
               </div>
 
               {/* User Profile Section */}
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}

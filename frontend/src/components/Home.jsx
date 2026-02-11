@@ -23,7 +23,13 @@ function Home() {
   }, []);
   
   const getGamePath = (game) => {
-    if (game.name === 'Frequency Recognition') {
+    // Check for Frequency Recognition by name (case-insensitive) or game type
+    const isFrequencyGame =
+      game.name?.toLowerCase().includes('frequency') ||
+      game.type === 'frequency_recognition' ||
+      game.game_type === 'eq_training';
+
+    if (isFrequencyGame) {
       return '/frequency-game';
     }
     return `/game/${game.id}`;

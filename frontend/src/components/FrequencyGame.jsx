@@ -219,7 +219,6 @@ function FrequencyGame() {
     if (!selectedBand || !currentChallenge) return;
 
     const isCorrect = selectedBand.id === currentChallenge.correctBand.id;
-    setAttempts(attempts + 1);
 
     // If we have a challenge ID from the API, submit to backend for XP
     if (currentChallenge.id && currentChallenge.frequencyBandId) {
@@ -229,9 +228,10 @@ function FrequencyGame() {
           fb => fb.name === selectedBand.name
         );
 
+        // Ensure ID is an integer to match backend expectations
         const userSelectedBandId = selectedBackendBand
-          ? selectedBackendBand.id
-          : currentChallenge.frequencyBandId;
+          ? parseInt(selectedBackendBand.id, 10)
+          : parseInt(currentChallenge.frequencyBandId, 10);
 
         const response = await axios.post('/api/v1/eq-challenge/submit/', {
           challenge_id: currentChallenge.id,
@@ -240,6 +240,9 @@ function FrequencyGame() {
         });
 
         const { correct, xp_earned, level_up, new_level, unlocked_achievements } = response.data;
+
+        // Update score and attempts only after backend confirms
+        setAttempts(attempts + 1);
 
         if (correct) {
           setScore(score + 1);

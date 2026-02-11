@@ -112,6 +112,13 @@ function GameDetail() {
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
 
+    // Guard against submission when game is over or no attempts left
+    if (gameOver || attemptsLeft <= 0) {
+      setFeedback("Game is over. Please start a new session.");
+      setFeedbackType("error");
+      return;
+    }
+
     if (!answer || !answer.trim()) {
       setFeedback("Please select a note");
       setFeedbackType("error");
@@ -131,12 +138,6 @@ function GameDetail() {
     }
 
     try {
-      console.log('Submitting answer:', {
-        challenge_id: challenge.id,
-        answer: answer.trim(),
-        session_id: sessionId
-      });
-
       const response = await axios.post('/api/v1/submit-answer/', {
         challenge_id: challenge.id,
         answer: answer.trim(),
@@ -153,8 +154,8 @@ function GameDetail() {
         setAttemptsLeft(backendAttemptsLeft);
       }
 
-      // Check if game is over from backend
-      if (game_over) {
+      // Check if game is over from backend (either explicit flag or no attempts left)
+      if (game_over || backendAttemptsLeft === 0) {
         setGameOver(true);
         setFeedback(result || "Game over!");
         setFeedbackType("error");
