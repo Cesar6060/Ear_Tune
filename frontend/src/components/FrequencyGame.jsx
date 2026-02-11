@@ -242,10 +242,11 @@ function FrequencyGame() {
         const { correct, xp_earned, level_up, new_level, unlocked_achievements } = response.data;
 
         // Update score and attempts only after backend confirms
-        setAttempts(attempts + 1);
+        // Use functional updates to avoid stale closure values
+        setAttempts(prev => prev + 1);
 
         if (correct) {
-          setScore(score + 1);
+          setScore(prev => prev + 1);
           setFeedback({ correct: true, message: 'Correct! 🎉' });
 
           // Confetti celebration
@@ -284,8 +285,11 @@ function FrequencyGame() {
       } catch (error) {
         console.error('Error submitting answer:', error);
         // Fallback to client-side feedback
+        // Increment attempts even in error fallback
+        setAttempts(prev => prev + 1);
+
         if (isCorrect) {
-          setScore(score + 1);
+          setScore(prev => prev + 1);
           setFeedback({ correct: true, message: 'Correct! 🎉' });
           confetti({
             particleCount: 100,
@@ -300,9 +304,12 @@ function FrequencyGame() {
         }
       }
     } else {
-      // Client-side only mode (fallback)
+      // Client-side only mode (fallback when no backend challenge)
+      // Increment attempts in client-only mode too
+      setAttempts(prev => prev + 1);
+
       if (isCorrect) {
-        setScore(score + 1);
+        setScore(prev => prev + 1);
         setFeedback({ correct: true, message: 'Correct! 🎉' });
         confetti({
           particleCount: 100,
