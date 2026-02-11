@@ -1,469 +1,840 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import Confetti from 'react-confetti';
+import confetti from 'canvas-confetti';
 import axios from '../axiosConfig';
 import LevelUpModal from './LevelUpModal';
 import AchievementUnlockModal from './AchievementUnlockModal';
 
+// Simplified frequency bands
+const FREQUENCY_BANDS = [
+  { id: 'bass', name: 'Bass', centerHz: 150, color: 'from-red-500 to-rose-600', emoji: '🔴' },
+  { id: 'low-mids', name: 'Low Mids', centerHz: 600, color: 'from-orange-500 to-amber-600', emoji: '🟠' },
+  { id: 'mids', name: 'Mids', centerHz: 1500, color: 'from-yellow-500 to-amber-600', emoji: '🟡' },
+  { id: 'high-mids', name: 'High Mids', centerHz: 4000, color: 'from-green-500 to-emerald-600', emoji: '🟢' },
+  { id: 'treble', name: 'Treble', centerHz: 10000, color: 'from-blue-500 to-indigo-600', emoji: '🔵' }
+];
+
+// Difficulty settings
+const DIFFICULTIES = {
+  beginner: { changeDb: 12, xp: 10, label: 'Beginner' },
+  intermediate: { changeDb: 6, xp: 20, label: 'Intermediate' },
+  advanced: { changeDb: 3, xp: 30, label: 'Advanced' }
+};
+
 function FrequencyGame() {
   const navigate = useNavigate();
-  
-  // State
-  const [challenge, setChallenge] = useState(null);
-  const [frequencyBands, setFrequencyBands] = useState([]);
-  const [selectedBand, setSelectedBand] = useState(null);
-  const [selectedChange, setSelectedChange] = useState(null);
-  const [feedback, setFeedback] = useState(null);
+
+  // Game state
+  const [difficulty, setDifficulty] = useState('beginner');
+  const [gameStarted, setGameStarted] = useState(false);
   const [score, setScore] = useState(0);
   const [attempts, setAttempts] = useState(0);
-  const [difficulty, setDifficulty] = useState('beginner');
-  const [loading, setLoading] = useState(true);
-  
-  // Audio refs
-  const originalAudioRef = useRef(null);
-  const processedAudioRef = useRef(null);
+  const [currentChallenge, setCurrentChallenge] = useState(null);
+  const [selectedBand, setSelectedBand] = useState(null);
+  const [selectedChange, setSelectedChange] = useState(null); // 'boost' or 'cut'
+  const [feedback, setFeedback] = useState(null);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
-
-  // Confetti state
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [loading, setLoading] = useState(false);
+  const [frequencyBands, setFrequencyBands] = useState([]);
 
   // Gamification state
   const [xpEarned, setXpEarned] = useState(0);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [newLevel, setNewLevel] = useState(null);
-  const [currentAchievement, setCurrentAchievement] = useState(null);
   const [achievementQueue, setAchievementQueue] = useState([]);
+  const [currentAchievement, setCurrentAchievement] = useState(null);
 
-  // Update window size for confetti
+  // Audio refs
+  const audioContextRef = useRef(null);
+  const noiseBufferRef = useRef(null);
+  const sourceRef = useRef(null);
+
+  // Initialize audio context and fetch frequency bands
   useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  
-  // Load frequency bands on mount
-  useEffect(() => {
-    loadFrequencyBands();
-    loadNewChallenge();
-  }, [difficulty]);
-  
-  const loadFrequencyBands = async () => {
-    try {
-      const response = await axios.get('/api/v1/frequency-bands/');
-      setFrequencyBands(response.data);
-    } catch (error) {
-      console.error('Error loading frequency bands:', error);
-    }
-  };
-  
-  const loadNewChallenge = async () => {
-    setLoading(true);
-    setFeedback(null);
-    setSelectedBand(null);
-    setSelectedChange(null);
-    
-    try {
-      const response = await axios.get('/api/v1/eq-challenge/random/', {
-        params: { difficulty }
-      });
-      setChallenge(response.data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading challenge:', error);
-      setLoading(false);
-    }
-  };
-  
-  const playOriginal = () => {
-    if (processedAudioRef.current) {
-      processedAudioRef.current.pause();
-    }
-    originalAudioRef.current.play();
-    setCurrentlyPlaying('original');
-  };
-  
-  const playProcessed = () => {
-    if (originalAudioRef.current) {
-      originalAudioRef.current.pause();
-    }
-    processedAudioRef.current.play();
-    setCurrentlyPlaying('processed');
-  };
-  
-  const submitAnswer = async () => {
-    if (!selectedBand || selectedChange === null) {
-      alert('Please select both a frequency band and change amount');
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) {
+      alert('Your browser does not support Web Audio API');
       return;
     }
 
-    try {
-      const response = await axios.post('/api/v1/eq-challenge/submit/', {
-        challenge_id: challenge.id,
-        frequency_band_id: selectedBand,
-        change_amount: selectedChange
-      });
+    audioContextRef.current = new AudioContext();
+    generatePinkNoise();
 
-      const { correct, correct_answer, xp_earned, level_up, new_level, unlocked_achievements } = response.data;
-
-      setFeedback({
-        correct,
-        correctAnswer: correct_answer,
-        message: correct ? 'Correct! Well done!' : 'Incorrect. Try again!'
-      });
-
-      setAttempts(attempts + 1);
-      if (correct) {
-        setScore(score + 1);
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
-
-        // Show XP earned
-        if (xp_earned) {
-          setXpEarned(xp_earned);
-          setTimeout(() => setXpEarned(0), 3000);
-        }
-
-        // Show level up modal
-        if (level_up && new_level) {
-          setTimeout(() => {
-            setNewLevel(new_level);
-            setShowLevelUp(true);
-          }, 1000);
-        }
-
-        // Queue achievements to show one by one
-        if (unlocked_achievements && unlocked_achievements.length > 0) {
-          setTimeout(() => {
-            setAchievementQueue(unlocked_achievements);
-          }, level_up ? 4000 : 2000);
-        }
-
-        setTimeout(loadNewChallenge, 2000);
+    // Fetch frequency bands from backend
+    const fetchFrequencyBands = async () => {
+      try {
+        const response = await axios.get('/api/v1/frequency-bands/');
+        setFrequencyBands(response.data);
+      } catch (error) {
+        console.error('Error fetching frequency bands:', error);
+        // Fallback: use default mapping if API fails
       }
+    };
+
+    fetchFrequencyBands();
+
+    return () => {
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
+
+  // Generate pink noise buffer
+  const generatePinkNoise = () => {
+    if (!audioContextRef.current) return;
+
+    const duration = 3; // seconds
+    const sampleRate = audioContextRef.current.sampleRate;
+    const buffer = audioContextRef.current.createBuffer(2, duration * sampleRate, sampleRate);
+
+    // Simple pink noise generation
+    for (let channel = 0; channel < 2; channel++) {
+      const channelData = buffer.getChannelData(channel);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+
+      for (let i = 0; i < channelData.length; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        channelData[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+        b6 = white * 0.115926;
+      }
+    }
+
+    noiseBufferRef.current = buffer;
+  };
+
+  // Generate new challenge - fetch from backend
+  const generateChallenge = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`/api/v1/eq-challenge/random/?difficulty=${difficulty}`);
+      const challenge = response.data;
+
+      // Map backend frequency band to our client-side bands
+      const bandMap = {
+        'Bass': FREQUENCY_BANDS[0],
+        'Low Mids': FREQUENCY_BANDS[1],
+        'Mids': FREQUENCY_BANDS[2],
+        'High Mids': FREQUENCY_BANDS[3],
+        'Treble': FREQUENCY_BANDS[4]
+      };
+
+      const correctBand = bandMap[challenge.frequency_band.name] || FREQUENCY_BANDS[0];
+
+      setCurrentChallenge({
+        id: challenge.id,
+        correctBand: correctBand,
+        changeDb: challenge.change_amount,
+        centerHz: correctBand.centerHz,
+        frequencyBandId: challenge.frequency_band.id
+      });
+      setSelectedBand(null);
+      setSelectedChange(null);
+      setFeedback(null);
     } catch (error) {
-      console.error('Error submitting answer:', error);
+      console.error('Error fetching challenge:', error);
+      // Fallback to client-side generation if API fails
+      const randomBand = FREQUENCY_BANDS[Math.floor(Math.random() * FREQUENCY_BANDS.length)];
+      const isBoost = Math.random() > 0.5;
+      const changeDb = isBoost ? DIFFICULTIES[difficulty].changeDb : -DIFFICULTIES[difficulty].changeDb;
+
+      setCurrentChallenge({
+        correctBand: randomBand,
+        changeDb: changeDb,
+        centerHz: randomBand.centerHz
+      });
+      setSelectedBand(null);
+      setSelectedChange(null);
+      setFeedback(null);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Handle achievement queue display
+  // Play audio
+  const playAudio = async (withFilter = false) => {
+    if (!audioContextRef.current || !noiseBufferRef.current) return;
+
+    // Resume AudioContext if suspended (required for autoplay policy)
+    if (audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+      } catch (e) {
+        console.error('Failed to resume AudioContext:', e);
+        return;
+      }
+    }
+
+    // Stop any currently playing audio
+    if (sourceRef.current) {
+      try {
+        sourceRef.current.stop();
+      } catch (e) {}
+    }
+
+    const source = audioContextRef.current.createBufferSource();
+    source.buffer = noiseBufferRef.current;
+
+    const gainNode = audioContextRef.current.createGain();
+    gainNode.gain.value = 0.3; // Not too loud
+
+    if (withFilter && currentChallenge) {
+      // Create and apply EQ filter
+      const filter = audioContextRef.current.createBiquadFilter();
+      filter.type = 'peaking';
+      filter.frequency.value = currentChallenge.centerHz;
+      filter.Q.value = 1.4; // Moderate Q for musical effect
+      filter.gain.value = currentChallenge.changeDb;
+
+      source.connect(filter);
+      filter.connect(gainNode);
+    } else {
+      source.connect(gainNode);
+    }
+
+    gainNode.connect(audioContextRef.current.destination);
+
+    source.start(0);
+    sourceRef.current = source;
+
+    setCurrentlyPlaying(withFilter ? 'processed' : 'original');
+
+    source.onended = () => {
+      setCurrentlyPlaying(null);
+    };
+  };
+
+  // Start game
+  const handleStartGame = async () => {
+    // Resume AudioContext on user gesture for mobile compatibility
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+      } catch (e) {
+        console.error('Failed to resume AudioContext:', e);
+      }
+    }
+
+    setGameStarted(true);
+    generateChallenge();
+  };
+
+  // Submit answer
+  const handleSubmit = async () => {
+    if (!selectedBand || !selectedChange || !currentChallenge) return;
+
+    // Check if both band and boost/cut direction are correct
+    const isBandCorrect = selectedBand.id === currentChallenge.correctBand.id;
+    const isChangeCorrect =
+      (selectedChange === 'boost' && currentChallenge.changeDb > 0) ||
+      (selectedChange === 'cut' && currentChallenge.changeDb < 0);
+    const isCorrect = isBandCorrect && isChangeCorrect;
+
+    // If we have a challenge ID from the API, submit to backend for XP
+    if (currentChallenge.id && currentChallenge.frequencyBandId) {
+      try {
+        // Map user's selected band to backend frequency band ID
+        const selectedBackendBand = frequencyBands.find(
+          fb => fb.name === selectedBand.name
+        );
+
+        // Critical: We must have the user's selected band ID, not the correct answer
+        if (!selectedBackendBand?.id) {
+          // If we can't map user selection, show error instead of falling back to correct answer
+          setFeedback({
+            correct: false,
+            message: 'Unable to submit answer. Please refresh and try again.'
+          });
+          console.error('Cannot map user selection to backend frequency band ID. Available bands:', frequencyBands);
+          return;
+        }
+
+        // Ensure ID is an integer to match backend expectations
+        const userSelectedBandId = parseInt(selectedBackendBand.id, 10);
+
+        // Validate parseInt result
+        if (isNaN(userSelectedBandId)) {
+          setFeedback({
+            correct: false,
+            message: 'Invalid selection. Please try again.'
+          });
+          console.error('Invalid frequency band ID:', selectedBackendBand.id);
+          return;
+        }
+
+        // Send user's guess about change direction with difficulty magnitude
+        const userChangeAmount = selectedChange === 'boost'
+          ? Math.abs(currentChallenge.changeDb)
+          : -Math.abs(currentChallenge.changeDb);
+
+        const response = await axios.post('/api/v1/eq-challenge/submit/', {
+          challenge_id: currentChallenge.id,
+          frequency_band_id: userSelectedBandId,
+          change_amount: userChangeAmount
+        });
+
+        const { correct, xp_earned, level_up, new_level, unlocked_achievements } = response.data;
+
+        // Update score and attempts only after backend confirms
+        // Use functional updates to avoid stale closure values
+        setAttempts(prev => prev + 1);
+
+        if (correct) {
+          setScore(prev => prev + 1);
+          setFeedback({ correct: true, message: 'Correct! 🎉' });
+
+          // Confetti celebration
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+
+          // Show XP earned
+          if (xp_earned) {
+            setXpEarned(xp_earned);
+            setTimeout(() => setXpEarned(0), 3000);
+          }
+
+          // Show level up modal
+          if (level_up && new_level) {
+            setTimeout(() => {
+              setNewLevel(new_level);
+              setShowLevelUp(true);
+            }, 1000);
+          }
+
+          // Queue achievements to show one by one
+          if (unlocked_achievements && unlocked_achievements.length > 0) {
+            setTimeout(() => {
+              setAchievementQueue(unlocked_achievements);
+            }, level_up ? 4000 : 2000);
+          }
+        } else {
+          const correctBandName = response.data.correct_answer?.frequency_band
+            || currentChallenge.correctBand.name;
+          const correctChange = currentChallenge.changeDb > 0 ? 'boosted' : 'cut';
+          setFeedback({
+            correct: false,
+            message: `Incorrect. It was ${correctBandName} ${correctChange}`
+          });
+        }
+      } catch (error) {
+        console.error('Error submitting answer:', error);
+        // Fallback to client-side feedback
+        // Increment attempts even in error fallback
+        setAttempts(prev => prev + 1);
+
+        if (isCorrect) {
+          setScore(prev => prev + 1);
+          setFeedback({ correct: true, message: 'Correct! 🎉' });
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        } else {
+          setFeedback({
+            correct: false,
+            message: `Incorrect. It was ${currentChallenge.correctBand.name}`
+          });
+        }
+      }
+    } else {
+      // Client-side only mode (fallback when no backend challenge)
+      // Increment attempts in client-only mode too
+      setAttempts(prev => prev + 1);
+
+      if (isCorrect) {
+        setScore(prev => prev + 1);
+        setFeedback({ correct: true, message: 'Correct! 🎉' });
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } else {
+        setFeedback({
+          correct: false,
+          message: `Incorrect. It was ${currentChallenge.correctBand.name}`
+        });
+      }
+    }
+  };
+
+  // Next challenge
+  const handleNext = async () => {
+    await generateChallenge();
+    setFeedback(null);
+    setSelectedBand(null);
+    setSelectedChange(null);
+  };
+
+  // Handle achievement queue - show one at a time
   useEffect(() => {
     if (achievementQueue.length > 0 && !currentAchievement) {
       setCurrentAchievement(achievementQueue[0]);
+      setAchievementQueue(achievementQueue.slice(1));
     }
   }, [achievementQueue, currentAchievement]);
 
-  const handleAchievementClose = () => {
-    setCurrentAchievement(null);
-    setAchievementQueue(prev => prev.slice(1));
-  };
-
-  const handleLevelUpClose = () => {
-    setShowLevelUp(false);
-    setNewLevel(null);
-  };
-  
-  if (loading) {
+  // Render welcome screen
+  if (!gameStarted) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex items-center justify-center min-h-screen"
-      >
-        <div className="text-xl text-indigo-600">Loading challenge...</div>
-      </motion.div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 flex items-center justify-center px-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-3xl w-full bg-white/90 backdrop-blur-xl rounded-3xl p-10 shadow-2xl border border-indigo-100"
+        >
+          {/* Header with Icon */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-center mb-8"
+          >
+            <div className="text-6xl mb-4">🎵</div>
+            <h1 className="text-5xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">
+              Frequency Recognition Training
+            </h1>
+            <p className="text-slate-600 text-lg">
+              Train your ears to identify which frequency range was boosted or cut in the audio.
+            </p>
+          </motion.div>
+
+          {/* Difficulty Selection */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-10"
+          >
+            <h3 className="text-xl font-bold text-slate-800 mb-6 text-center">Select Difficulty:</h3>
+            <div className="flex gap-4 justify-center flex-wrap">
+              {Object.entries(DIFFICULTIES).map(([key, diff], index) => (
+                <motion.button
+                  key={key}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.4 + index * 0.1 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setDifficulty(key)}
+                  className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 ${
+                    difficulty === key
+                      ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-xl shadow-purple-500/50 scale-105'
+                      : 'bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 hover:from-slate-200 hover:to-slate-300 shadow-md hover:shadow-lg'
+                  }`}
+                >
+                  <div className="flex flex-col items-center">
+                    <span>{diff.label}</span>
+                    <span className={`text-sm mt-1 ${difficulty === key ? 'opacity-90' : 'opacity-60'}`}>
+                      ±{diff.changeDb} dB
+                    </span>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Start Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="text-center"
+          >
+            <motion.button
+              whileHover={{ scale: 1.05, boxShadow: "0 20px 60px rgba(99, 102, 241, 0.4)" }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleStartGame}
+              className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold py-5 px-16 rounded-2xl text-2xl shadow-2xl shadow-indigo-500/50 transition-all duration-300 overflow-hidden group"
+            >
+              <span className="relative z-10 flex items-center gap-3">
+                Start Training
+                <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </motion.button>
+          </motion.div>
+
+          {/* Decorative Elements */}
+          <div className="absolute top-10 left-10 w-20 h-20 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-2xl"></div>
+          <div className="absolute bottom-10 right-10 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-2xl"></div>
+        </motion.div>
+      </div>
     );
   }
 
-  const accuracy = attempts > 0 ? Math.round((score / attempts) * 100) : 0;
-
+  // Render game
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="frequency-game-container min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 px-4 py-8"
-    >
-      {showConfetti && (
-        <Confetti
-          width={windowSize.width}
-          height={windowSize.height}
-          numberOfPieces={200}
-          recycle={false}
-          gravity={0.3}
-        />
-      )}
-
-      <motion.h1
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="text-4xl font-bold text-center mb-6 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
-      >
-        Frequency Recognition Training
-      </motion.h1>
-
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="game-stats flex justify-center gap-8 mb-6"
-      >
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
         <motion.div
-          key={score}
-          initial={{ scale: 1.2 }}
-          animate={{ scale: 1 }}
-          className="bg-white/80 backdrop-blur-lg px-6 py-3 rounded-full shadow-lg border border-indigo-200"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
         >
-          <span className="text-lg font-bold text-slate-700">Score: </span>
-          <span className="text-lg font-bold text-indigo-600">{score}/{attempts}</span>
-          {attempts > 0 && <span className="text-sm text-slate-500 ml-2">({accuracy}%)</span>}
+          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+            🎵 Frequency Recognition
+          </h1>
+          <div className="flex justify-center gap-6 text-lg flex-wrap">
+            <div className="bg-white/80 backdrop-blur-sm px-6 py-2 rounded-full shadow-md">
+              <span className="font-semibold text-purple-600">Score: </span>
+              <span className="font-bold text-slate-800">{score}/{attempts}</span>
+            </div>
+            <div className="bg-white/80 backdrop-blur-sm px-6 py-2 rounded-full shadow-md">
+              <span className="font-semibold text-indigo-600">Difficulty: </span>
+              <span className="font-bold text-slate-800">{DIFFICULTIES[difficulty].label}</span>
+            </div>
+          </div>
         </motion.div>
-        <div className="bg-white/80 backdrop-blur-lg px-6 py-3 rounded-full shadow-lg border border-purple-200">
-          <span className="text-lg font-semibold text-slate-700">Difficulty: </span>
-          <span className="text-lg font-semibold text-purple-600 capitalize">{difficulty}</span>
-        </div>
-      </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="difficulty-selector flex justify-center gap-3 mb-8"
-      >
-        {['beginner', 'intermediate', 'advanced'].map((level) => (
-          <motion.button
-            key={level}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              difficulty === level
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                : 'bg-white/80 text-slate-700 border border-slate-300 hover:border-indigo-400'
-            }`}
-            onClick={() => setDifficulty(level)}
-          >
-            {level.charAt(0).toUpperCase() + level.slice(1)}
-          </motion.button>
-        ))}
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.4 }}
-        className="audio-controls max-w-2xl mx-auto bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl p-6 mb-6 border border-slate-200"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-center text-slate-800">Listen and Compare</h2>
-        <div className="audio-buttons flex justify-center gap-4">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={playOriginal}
-            className={`px-8 py-3 rounded-lg font-semibold transition-all ${
-              currentlyPlaying === 'original'
-                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
-                : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md hover:shadow-lg'
-            }`}
-          >
-            {currentlyPlaying === 'original' ? 'Playing Original...' : 'Play Original'}
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={playProcessed}
-            className={`px-8 py-3 rounded-lg font-semibold transition-all ${
-              currentlyPlaying === 'processed'
-                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
-                : 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-md hover:shadow-lg'
-            }`}
-          >
-            {currentlyPlaying === 'processed' ? 'Playing Modified...' : 'Play Modified'}
-          </motion.button>
-        </div>
-
-        {challenge && (
-          <>
-            <audio
-              ref={originalAudioRef}
-              src={`/static/audio/eq_samples/${challenge.source_audio}`}
-              onEnded={() => setCurrentlyPlaying(null)}
-            />
-            <audio
-              ref={processedAudioRef}
-              src={`/static/audio/eq_samples/${challenge.source_audio}_${challenge.frequency_band.name.toLowerCase().replaceAll(' ', '_')}_${challenge.change_amount}db.wav`}
-              onEnded={() => setCurrentlyPlaying(null)}
-            />
-          </>
-        )}
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="answer-section max-w-4xl mx-auto bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl p-6 mb-6 border border-slate-200"
-      >
-        <h3 className="text-xl font-bold mb-4 text-slate-800">Which frequency was changed?</h3>
-        <div className="frequency-band-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
-          {frequencyBands.map(band => (
-            <motion.button
-              key={band.id}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`freq-band-btn p-4 rounded-lg border-2 transition-all ${
-                selectedBand === band.id
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-indigo-600 shadow-lg'
-                  : 'bg-white border-slate-300 hover:border-indigo-400 text-slate-700'
-              }`}
-              onClick={() => setSelectedBand(band.id)}
-            >
-              <span className="band-name block font-bold text-sm">{band.name}</span>
-              <span className="band-range block text-xs mt-1 opacity-90">{band.min_frequency}-{band.max_frequency} Hz</span>
-            </motion.button>
-          ))}
-        </div>
-
-        <h3 className="text-xl font-bold mb-4 text-slate-800">By how much?</h3>
-        <div className="change-amount-grid grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 mb-6">
-          {[-12, -9, -6, -3, 0, 3, 6, 9, 12].map(amount => (
-            <motion.button
-              key={amount}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              className={`change-btn py-3 px-2 rounded-lg font-bold transition-all ${
-                selectedChange === amount
-                  ? amount === 0
-                    ? 'bg-gradient-to-r from-slate-500 to-slate-600 text-white shadow-lg'
-                    : amount > 0
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
-                      : 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg'
-                  : 'bg-white border border-slate-300 hover:border-indigo-400 text-slate-700'
-              }`}
-              onClick={() => setSelectedChange(amount)}
-            >
-              {amount > 0 ? '+' : ''}{amount} dB
-            </motion.button>
-          ))}
-        </div>
-
-        <motion.button
-          whileHover={{ scale: selectedBand && selectedChange !== null ? 1.02 : 1 }}
-          whileTap={{ scale: selectedBand && selectedChange !== null ? 0.98 : 1 }}
-          className={`submit-answer-btn w-full py-4 rounded-lg font-bold text-lg transition-all ${
-            selectedBand && selectedChange !== null
-              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg hover:shadow-xl cursor-pointer'
-              : 'bg-slate-300 text-slate-500 cursor-not-allowed'
-          }`}
-          onClick={submitAnswer}
-          disabled={!selectedBand || selectedChange === null}
+        {/* Audio Controls */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white/90 backdrop-blur-xl rounded-3xl p-8 mb-6 shadow-xl border border-indigo-100"
         >
-          Submit Answer
-        </motion.button>
-      </motion.div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center flex items-center justify-center gap-2">
+            <span className="text-3xl">🎧</span>
+            Listen and Compare
+          </h2>
 
-      <AnimatePresence>
-        {feedback && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              y: 0,
-              ...(feedback.correct && {
-                rotate: [0, -2, 2, -2, 2, 0],
-              })
-            }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            transition={{ duration: 0.4 }}
-            className={`feedback max-w-2xl mx-auto rounded-2xl p-6 text-center shadow-2xl border-2 ${
-              feedback.correct
-                ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300'
-                : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-300'
-            }`}
-          >
-            <motion.p
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              className={`text-2xl font-bold mb-2 ${
-                feedback.correct ? 'text-green-800' : 'text-red-800'
-              }`}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Original Button */}
+            <motion.button
+              whileHover={{ scale: currentlyPlaying === null ? 1.02 : 1 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => playAudio(false)}
+              disabled={currentlyPlaying !== null}
+              className={`relative py-10 rounded-2xl font-bold text-xl transition-all duration-300 overflow-hidden group ${
+                currentlyPlaying === 'original'
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-2xl shadow-green-500/50 scale-105'
+                  : 'bg-gradient-to-r from-slate-600 to-slate-700 text-white hover:from-slate-700 hover:to-slate-800 shadow-xl'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {feedback.message}
-            </motion.p>
-            {!feedback.correct && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="text-lg text-red-700"
-              >
-                Correct answer: <span className="font-bold">{feedback.correctAnswer.frequency_band}</span>
-                ({feedback.correctAnswer.change_amount > 0 ? '+' : ''}
-                {feedback.correctAnswer.change_amount} dB)
-              </motion.p>
+              <div className="relative z-10">
+                <div className="text-4xl mb-2">🔊</div>
+                <div>Play Original</div>
+                {currentlyPlaying === 'original' && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-sm mt-2 font-normal"
+                  >
+                    <span className="inline-flex gap-1">
+                      <span className="animate-pulse">●</span>
+                      <span className="animate-pulse delay-75">●</span>
+                      <span className="animate-pulse delay-150">●</span>
+                    </span>
+                    {' '}Playing...
+                  </motion.div>
+                )}
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </motion.button>
+
+            {/* Processed Button */}
+            <motion.button
+              whileHover={{ scale: currentlyPlaying === null ? 1.02 : 1 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => playAudio(true)}
+              disabled={currentlyPlaying !== null}
+              className={`relative py-10 rounded-2xl font-bold text-xl transition-all duration-300 overflow-hidden group ${
+                currentlyPlaying === 'processed'
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-2xl shadow-purple-500/50 scale-105'
+                  : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-xl'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <div className="relative z-10">
+                <div className="text-4xl mb-2">🎵</div>
+                <div>Play Modified</div>
+                {currentlyPlaying === 'processed' && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-sm mt-2 font-normal"
+                  >
+                    <span className="inline-flex gap-1">
+                      <span className="animate-pulse">●</span>
+                      <span className="animate-pulse delay-75">●</span>
+                      <span className="animate-pulse delay-150">●</span>
+                    </span>
+                    {' '}Playing...
+                  </motion.div>
+                )}
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </motion.button>
+          </div>
+
+          <p className="text-center text-slate-600 text-base">
+            Compare the two audio samples and identify which frequency was changed
+          </p>
+        </motion.div>
+
+        {/* Frequency Band Selection */}
+        {!feedback && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white/90 backdrop-blur-xl rounded-3xl p-8 mb-6 shadow-xl border border-indigo-100"
+          >
+            <h2 className="text-2xl font-bold text-slate-800 mb-8 text-center flex items-center justify-center gap-2">
+              <span className="text-3xl">🎯</span>
+              Which frequency was changed?
+            </h2>
+
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600"></div>
+                <p className="text-slate-600 mt-6 text-lg font-medium">Loading challenge...</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-5 mb-8">
+                  {FREQUENCY_BANDS.map((band, index) => (
+                    <motion.button
+                      key={band.id}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.3 + index * 0.05 }}
+                      whileHover={{ scale: 1.05, y: -4 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedBand(band)}
+                      className={`relative py-8 px-4 rounded-2xl font-bold text-lg transition-all duration-300 overflow-hidden ${
+                        selectedBand?.id === band.id
+                          ? `bg-gradient-to-br ${band.color} text-white shadow-2xl scale-105 ring-4 ring-white ring-opacity-50`
+                          : 'bg-gradient-to-br from-white to-slate-50 text-slate-700 hover:from-slate-50 hover:to-slate-100 shadow-lg hover:shadow-xl'
+                      }`}
+                    >
+                      <div className="relative z-10">
+                        <div className="text-4xl mb-3">{band.emoji}</div>
+                        <div className="font-extrabold text-xl mb-1">{band.name}</div>
+                        <div className={`text-sm ${selectedBand?.id === band.id ? 'opacity-90' : 'opacity-60'} font-semibold`}>
+                          {band.centerHz} Hz
+                        </div>
+                      </div>
+                      {selectedBand?.id === band.id && (
+                        <motion.div
+                          layoutId="selectedRing"
+                          className="absolute inset-0 rounded-2xl border-4 border-white/30"
+                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                        />
+                      )}
+                    </motion.button>
+                  ))}
+                </div>
+
+                {/* Boost or Cut Selection */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-slate-800 mb-4 text-center">
+                    Was it boosted or cut?
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <motion.button
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedChange('boost')}
+                      className={`py-6 px-6 rounded-2xl font-bold text-lg transition-all duration-300 ${
+                        selectedChange === 'boost'
+                          ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-2xl scale-105 ring-4 ring-green-200'
+                          : 'bg-gradient-to-br from-white to-slate-50 text-slate-700 hover:from-green-50 hover:to-emerald-50 shadow-lg hover:shadow-xl'
+                      }`}
+                    >
+                      <div className="text-4xl mb-2">📈</div>
+                      <div className="text-xl">Boosted (+)</div>
+                      <div className="text-sm opacity-75 mt-1">Frequency increased</div>
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedChange('cut')}
+                      className={`py-6 px-6 rounded-2xl font-bold text-lg transition-all duration-300 ${
+                        selectedChange === 'cut'
+                          ? 'bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-2xl scale-105 ring-4 ring-red-200'
+                          : 'bg-gradient-to-br from-white to-slate-50 text-slate-700 hover:from-red-50 hover:to-rose-50 shadow-lg hover:shadow-xl'
+                      }`}
+                    >
+                      <div className="text-4xl mb-2">📉</div>
+                      <div className="text-xl">Cut (−)</div>
+                      <div className="text-sm opacity-75 mt-1">Frequency decreased</div>
+                    </motion.button>
+                  </div>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: selectedBand && selectedChange ? 1.02 : 1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleSubmit}
+                  disabled={!selectedBand || !selectedChange}
+                  className={`relative w-full py-5 rounded-2xl font-bold text-xl transition-all duration-300 overflow-hidden group ${
+                    selectedBand && selectedChange
+                      ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white shadow-2xl shadow-green-500/50 hover:shadow-3xl'
+                      : 'bg-gradient-to-r from-slate-300 to-slate-400 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {selectedBand && selectedChange ? (
+                      <>
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Submit Answer
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        {!selectedBand ? 'Select frequency & boost/cut' : 'Select boost or cut'}
+                      </>
+                    )}
+                  </span>
+                  {selectedBand && selectedChange && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  )}
+                </motion.button>
+              </>
             )}
           </motion.div>
         )}
-      </AnimatePresence>
 
-      {/* XP Earned Display */}
-      <AnimatePresence>
-        {xpEarned > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.5 }}
-            animate={{
-              opacity: 1,
-              y: 0,
-              scale: 1,
-              transition: { type: "spring", duration: 0.5 }
-            }}
-            exit={{
-              opacity: 0,
-              y: -100,
-              scale: 0.5,
-              transition: { duration: 0.3 }
-            }}
-            className="fixed top-24 left-1/2 transform -translate-x-1/2 z-40"
-          >
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-2xl border-4 border-yellow-300">
-              <motion.span
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 0.5, repeat: 2 }}
-                className="text-3xl font-bold"
-              >
-                +{xpEarned} XP
-              </motion.span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* Feedback */}
+        <AnimatePresence>
+          {feedback && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: -20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className={`relative bg-white/95 backdrop-blur-xl rounded-3xl p-10 mb-6 text-center shadow-2xl overflow-hidden ${
+                feedback.correct
+                  ? 'border-4 border-green-400 ring-4 ring-green-200'
+                  : 'border-4 border-red-400 ring-4 ring-red-200'
+              }`}
+            >
+              {/* Background glow effect */}
+              <div className={`absolute inset-0 ${
+                feedback.correct
+                  ? 'bg-gradient-to-br from-green-50 to-emerald-50'
+                  : 'bg-gradient-to-br from-red-50 to-rose-50'
+              } opacity-50`}></div>
 
-      {/* Level Up Modal */}
-      {showLevelUp && <LevelUpModal newLevel={newLevel} xpEarned={xpEarned} onClose={handleLevelUpClose} />}
+              {/* Content */}
+              <div className="relative z-10">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                  className="text-7xl mb-4"
+                >
+                  {feedback.correct ? '🎉' : '😔'}
+                </motion.div>
 
-      {/* Achievement Unlock Modal */}
-      {currentAchievement && <AchievementUnlockModal achievement={currentAchievement} onClose={handleAchievementClose} />}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className={`text-4xl font-extrabold mb-6 ${
+                    feedback.correct
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                  }`}
+                >
+                  {feedback.message}
+                </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-        className="flex justify-center mt-8"
-      >
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/')}
-          className="back-btn bg-gradient-to-r from-slate-500 to-slate-600 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                <motion.button
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleNext}
+                  className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold py-4 px-12 rounded-2xl text-xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden group"
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    Next Challenge
+                    <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Back Button */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-center mt-8"
         >
-          Back to Games
-        </motion.button>
-      </motion.div>
-    </motion.div>
+          <motion.button
+            whileHover={{ scale: 1.05, x: -4 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/')}
+            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-semibold py-4 px-10 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 group"
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Games
+            </span>
+          </motion.button>
+        </motion.div>
+
+        {/* XP Earned Notification */}
+        <AnimatePresence>
+          {xpEarned > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              className="fixed top-24 right-8 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-full shadow-2xl z-40"
+            >
+              <span className="text-xl font-bold">+{xpEarned} XP</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Gamification Modals */}
+      <LevelUpModal
+        newLevel={newLevel}
+        xpEarned={xpEarned}
+        onClose={() => {
+          setShowLevelUp(false);
+          setNewLevel(null);
+        }}
+      />
+
+      <AchievementUnlockModal
+        achievement={currentAchievement}
+        onClose={() => setCurrentAchievement(null)}
+      />
+    </div>
   );
 }
 

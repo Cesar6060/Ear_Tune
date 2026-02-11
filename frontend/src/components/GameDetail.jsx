@@ -30,8 +30,9 @@ function GameDetail() {
   const [currentAchievement, setCurrentAchievement] = useState(null);
   const [achievementQueue, setAchievementQueue] = useState([]);
 
-  // Ref for the audio element
+  // Ref for the audio element and timeout
   const audioRef = useRef(null);
+  const challengeTimeoutRef = useRef(null);
 
   // Fetch game details
   useEffect(() => {
@@ -62,6 +63,12 @@ function GameDetail() {
   // Start a new game session
   const startNewSession = async () => {
     try {
+      // Clear any pending timeouts
+      if (challengeTimeoutRef.current) {
+        clearTimeout(challengeTimeoutRef.current);
+        challengeTimeoutRef.current = null;
+      }
+
       const response = await axios.post('/api/v1/game-sessions/create/', {
         game_id: gameId
       });
@@ -71,6 +78,7 @@ function GameDetail() {
       setGameOver(false);
       setFeedback('');
       setFeedbackType('');
+      setAnswer('');
       await fetchRandomChallenge();
     } catch (error) {
       console.error("Error starting new session:", error);
@@ -80,21 +88,51 @@ function GameDetail() {
   // Initialize game on component mount
   useEffect(() => {
     startNewSession();
+
+    // Cleanup function to clear timeouts when component unmounts
+    return () => {
+      if (challengeTimeoutRef.current) {
+        clearTimeout(challengeTimeoutRef.current);
+      }
+    };
   }, [gameId]);
 
   // Play audio when a new challenge is loaded
   useEffect(() => {
     if (audioRef.current && !loading && challenge) {
-      audioRef.current.play();
+      audioRef.current.play().catch(error => {
+        // Autoplay was prevented by browser policy
+        // User will need to click play button manually
+        console.warn('Autoplay prevented:', error);
+      });
     }
   }, [challenge, loading]);
 
   // Handle answer submission
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
-    if (!answer.trim()) {
-      setFeedback("Please enter an answer");
+    // Guard against submission when game is over or no attempts left
+    if (gameOver || attemptsLeft <= 0) {
+      setFeedback("Game is over. Please start a new session.");
+      setFeedbackType("error");
+      return;
+    }
+
+    if (!answer || !answer.trim()) {
+      setFeedback("Please select a note");
+      setFeedbackType("error");
+      return;
+    }
+
+    if (!challenge || !challenge.id) {
+      setFeedback("No challenge loaded. Please refresh the page.");
+      setFeedbackType("error");
+      return;
+    }
+
+    if (!sessionId) {
+      setFeedback("No active session. Please refresh the page.");
       setFeedbackType("error");
       return;
     }
@@ -106,11 +144,33 @@ function GameDetail() {
         session_id: sessionId
       });
 
-      const { result, xp_earned, level_up, new_level, unlocked_achievements } = response.data;
+      const { result, xp_earned, level_up, new_level, unlocked_achievements, game_over, attempts_left: backendAttemptsLeft, score: backendScore } = response.data;
+
+      // Update score and attempts from backend response
+      if (backendScore !== undefined) {
+        setScore(backendScore);
+      }
+      if (backendAttemptsLeft !== undefined) {
+        setAttemptsLeft(backendAttemptsLeft);
+      }
+
+      // Check if game is over from backend (either explicit flag or no attempts left)
+      if (game_over || backendAttemptsLeft === 0) {
+        setGameOver(true);
+        setFeedback(result || "Game over!");
+        setFeedbackType("error");
+        setAnswer('');
+
+        // Clear any pending challenge timeouts
+        if (challengeTimeoutRef.current) {
+          clearTimeout(challengeTimeoutRef.current);
+          challengeTimeoutRef.current = null;
+        }
+        return;
+      }
 
       // If the answer is correct
       if (result === "Correct!") {
-        setScore(score + 1);
         setFeedback("Correct! Good job!");
         setFeedbackType("success");
         setAnswer('');
@@ -136,27 +196,37 @@ function GameDetail() {
           }, level_up ? 4000 : 2000);
         }
 
-        // Fetch a new challenge
-        await fetchRandomChallenge();
+        // Delay before fetching new challenge to allow state updates to settle
+        // Clear any existing timeout first
+        if (challengeTimeoutRef.current) {
+          clearTimeout(challengeTimeoutRef.current);
+        }
+
+        challengeTimeoutRef.current = setTimeout(async () => {
+          setFeedback('');
+          setFeedbackType('');
+          await fetchRandomChallenge();
+          challengeTimeoutRef.current = null;
+        }, 1500);
       }
       // If the answer is incorrect
       else {
-        const newAttemptsLeft = attemptsLeft - 1;
-        setAttemptsLeft(newAttemptsLeft);
+        setFeedback(result);
+        setFeedbackType("error");
+        setAnswer('');
 
-        // If no attempts left, end the game
-        if (newAttemptsLeft <= 0) {
-          setGameOver(true);
-          setFeedback(`Game over! Your final score: ${score}`);
-          setFeedbackType("error");
-        } else {
-          setFeedback(`Incorrect. You have ${newAttemptsLeft} ${newAttemptsLeft === 1 ? 'attempt' : 'attempts'} left.`);
-          setFeedbackType("error");
+        // Clear any pending challenge timeouts
+        if (challengeTimeoutRef.current) {
+          clearTimeout(challengeTimeoutRef.current);
+          challengeTimeoutRef.current = null;
         }
       }
     } catch (error) {
-      console.error("Error submitting answer:", error);
-      setFeedback("Error submitting your answer. Please try again.");
+      const errorMessage = error.response?.data?.detail ||
+                          error.response?.data?.message ||
+                          "Error submitting your answer. Please try again.";
+
+      setFeedback(errorMessage);
       setFeedbackType("error");
     }
   };
@@ -182,7 +252,10 @@ function GameDetail() {
   const playAudioAgain = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
-      audioRef.current.play();
+      audioRef.current.play().catch(error => {
+        // Handle play() rejection gracefully
+        console.warn('Audio play prevented:', error);
+      });
     }
   };
 
@@ -278,15 +351,12 @@ function GameDetail() {
                 </div>
               </div>
 
-              <div className="challenge-prompt mb-6">
-                <h2 className="text-2xl font-bold mb-2 text-slate-800">{challenge.prompt}</h2>
-                <p className="text-slate-600 mb-2">Listen to the note and type your answer.</p>
-                <p className="note-hint text-sm text-slate-500 italic">
-                  For sharps, use format: "asharp" (e.g., A#), and for naturals: "a" (e.g., A)
-                </p>
+              <div className="challenge-prompt mb-6 text-center">
+                <h2 className="text-2xl font-bold mb-3 text-slate-800">{challenge.prompt}</h2>
+                <p className="text-slate-600 text-lg">🎧 Listen to the note and click your answer below</p>
               </div>
 
-              <div className="audio-section mb-6">
+              <div className="audio-section mb-8">
                 {audioFile && (
                   <>
                     <audio ref={audioRef} key={audioFile}>
@@ -298,33 +368,88 @@ function GameDetail() {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={playAudioAgain}
-                        className="play-btn bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                        className="play-btn bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold py-4 px-12 rounded-2xl shadow-lg hover:shadow-xl transition-all text-lg"
                       >
-                        Play Note
+                        🎵 Play Note Again
                       </motion.button>
                     </div>
                   </>
                 )}
               </div>
 
-              <form onSubmit={handleSubmit} className="answer-form space-y-4">
-                <input
-                  type="text"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Enter your answer (e.g., c, csharp)"
-                  className="answer-input w-full px-4 py-3 rounded-lg border-2 border-slate-300 focus:border-indigo-500 focus:outline-none transition-colors text-lg"
-                  autoFocus
-                />
+              {/* Piano-style Note Selector */}
+              <div className="note-selector mb-6">
+                <h3 className="text-lg font-semibold text-slate-700 mb-4 text-center">
+                  Select the note you heard:
+                </h3>
+
+                {/* Chromatic scale buttons */}
+                <div className="notes-grid grid grid-cols-6 md:grid-cols-12 gap-2 mb-6">
+                  {['c', 'csharp', 'd', 'dsharp', 'e', 'f', 'fsharp', 'g', 'gsharp', 'a', 'asharp', 'b'].map((note) => {
+                    const isSharp = note.includes('sharp');
+                    const displayNote = note.replace('sharp', '#').toUpperCase();
+                    const isSelected = answer === note;
+
+                    return (
+                      <motion.button
+                        key={note}
+                        type="button"
+                        whileHover={{ scale: gameOver || loading ? 1 : 1.05, y: gameOver || loading ? 0 : -4 }}
+                        whileTap={{ scale: gameOver || loading ? 1 : 0.95 }}
+                        onClick={() => !gameOver && !loading && setAnswer(note)}
+                        disabled={gameOver || loading}
+                        className={`relative py-6 px-3 rounded-xl font-bold text-xl transition-all duration-300 ${
+                          gameOver || loading ? 'opacity-50 cursor-not-allowed' : ''
+                        } ${
+                          isSelected
+                            ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-2xl shadow-indigo-500/50 scale-105 ring-4 ring-indigo-300'
+                            : isSharp
+                            ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white hover:from-slate-700 hover:to-slate-800 shadow-lg'
+                            : 'bg-gradient-to-br from-white to-slate-50 text-slate-800 hover:from-slate-50 hover:to-slate-100 shadow-lg border-2 border-slate-200'
+                        }`}
+                      >
+                        <span className="relative z-10">{displayNote}</span>
+                        {isSelected && (
+                          <motion.div
+                            layoutId="selectedNote"
+                            className="absolute inset-0 rounded-xl border-4 border-white/30"
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          />
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
+                {/* Submit button */}
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  className="submit-btn w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                  whileHover={{ scale: answer && !gameOver && !loading ? 1.02 : 1 }}
+                  whileTap={{ scale: !gameOver && !loading ? 0.98 : 1 }}
+                  onClick={handleSubmit}
+                  disabled={!answer || gameOver || loading}
+                  className={`w-full py-4 rounded-2xl font-bold text-xl transition-all duration-300 ${
+                    answer && !gameOver && !loading
+                      ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white shadow-2xl shadow-green-500/50 hover:shadow-3xl'
+                      : 'bg-gradient-to-r from-slate-300 to-slate-400 text-slate-500 cursor-not-allowed'
+                  }`}
                 >
-                  Submit Answer
+                  {answer ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Submit Answer
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      Select a note first
+                    </span>
+                  )}
                 </motion.button>
-              </form>
+              </div>
 
               <AnimatePresence>
                 {feedback && (
